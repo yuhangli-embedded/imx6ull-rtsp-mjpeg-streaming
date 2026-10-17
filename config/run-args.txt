@@ -1,0 +1,1 @@
+--device /dev/video2 --width 1280 --height 720 --fps 30 --rtsp-port 8554 --path /live --max-clients 2 --slow-client-id 0 --slow-client-delay-ms 0 --udp-gap-us 10 --udp-frame-budget-ms 100 --frames 0

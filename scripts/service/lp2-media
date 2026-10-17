@@ -1,0 +1,629 @@
+#!/bin/sh
+# LP2-M7.3-SERVICE-V1
+### BEGIN INIT INFO
+# Provides:          lp2-media
+# Required-Start:    $local_fs $network
+# Required-Stop:     $local_fs $network
+# Default-Start:     5
+# Default-Stop:
+# Short-Description: LP2 RTSP/JPEG service with optional approved shell watchdog
+### END INIT INFO
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+ROOT=/opt/lp2-media
+RUNTIME=/var/volatile/tmp/lp2-media-service
+PROC=/proc
+SSD=/usr/sbin/start-stop-daemon
+CAMERA_WAIT=20
+START_WAIT=5
+STOP_WAIT=25
+SCAN_PASSES=4
+CAMERA=/dev/video2
+action=${1:-status}
+PIDFILE=$RUNTIME/server.pid
+IDENTITY=$RUNTIME/server.identity
+EXPECTED_ARGS='--device /dev/video2 --width 1280 --height 720 --fps 30 --rtsp-port 8554 --path /live --max-clients 2 --slow-client-id 0 --slow-client-delay-ms 0 --udp-gap-us 10 --udp-frame-budget-ms 100 --frames 0'
+stage=entry
+reason='Unhandled command failure; inspect stage and console'
+lock_owned=0
+scan_pid=none
+scan_phase=none
+scan_directory=not_sampled
+scan_pass=0
+scan_exit_check=not_checked
+
+fail() {
+    reason=$*
+    if [ "$stage" = proc_scan ]; then
+        if [ -d "$PROC/$scan_pid" ]; then scan_directory=present; else scan_directory=absent_or_inaccessible; fi
+    fi
+    printf 'LP2 ERROR: %s\n' "$*" >&2; exit 1
+}
+diagnostic_writer_identity() {
+    # Builtin redirection/read opens /proc/self in THIS shell, unlike external
+    # cat or POSIX $$ (which may still identify the parent in a subshell).
+    IFS= read -r diag_self < "$PROC/self/stat" || return 1
+    diag_writer_pid=${diag_self%% *}
+    case "$diag_writer_pid" in ''|0|*[!0-9]*) return 1 ;; esac
+    case "$diag_self" in "$diag_writer_pid ("*") "*) ;; *) return 1 ;; esac
+    diag_rest=${diag_self##*) }
+    diag_writer_ticks=$(printf '%s\n' "$diag_rest" | awk '
+      NF>=20 && $7~/^[0-9]+$/ && int($7/2097152)%2==0 && $20~/^[0-9]+$/ {print $20;ok=1}
+      END {if(!ok||NR!=1)exit 1}') || return 1
+    diag_writer_boot=$(cat "$PROC/sys/kernel/random/boot_id") || return 1
+    case "$diag_writer_boot" in ''|*[!0-9a-f-]*) return 1 ;; esac
+    [ "${#diag_writer_boot}" = 36 ]
+}
+diagnostic_lock_valid() {
+    # CWD pins the acquired directory. Never remove an owner file through a
+    # pathname which an administrator might have replaced with another lock.
+    [ "$(stat -c '%d:%i' .)" = "$diag_token" ] &&
+    [ ! -L "$diag_lock" ] && [ -d "$diag_lock" ] &&
+    [ "$(stat -c '%d:%i' "$diag_lock")" = "$diag_token" ] &&
+    [ -f owner ] && [ ! -L owner ] && [ "$(cat owner)" = "$diag_owner" ]
+}
+diagnostic_unlock() {
+    [ "${diag_lock_owned:-0}" = 1 ] || return 0
+    diagnostic_lock_valid || {
+        printf 'LP2 DIAGNOSTIC: lock instance changed; retained\n' >&2; return 1;
+    }
+    rm owner || return 1
+    # Linux normally allows removing one's CWD, but do not depend on that
+    # filesystem/shell detail. Owner was removed through the pinned old CWD;
+    # leave it only afterwards and recheck the path instance before rmdir.
+    cd "$diag_base" || return 1
+    [ ! -L "$diag_lock" ] && [ "$(stat -c '%d:%i' "$diag_lock")" = "$diag_token" ] || return 1
+    rmdir "$diag_lock"
+}
+diagnostic_complete() {
+    # Normal/error paths explicitly finalize before leaving diagnostic().
+    # EXIT is only a fallback, not the sole normal-completion mechanism.
+    # Disable traps to prevent recursive cleanup or masking the original code.
+    diag_result=$1
+    trap - EXIT INT TERM HUP
+    if diagnostic_unlock; then
+        diag_lock_owned=0
+    else
+        printf 'LP2 DIAGNOSTIC: explicit unlock failed; evidence retained\n' >&2
+        [ "$diag_result" != 0 ] || diag_result=1
+    fi
+    exit "$diag_result"
+}
+diagnostic() (
+    # Best-effort, isolated from lifecycle globals and never used to authorize
+    # start/stop. Three fixed 2048-byte snapshots survive volatile-dir cleanup.
+    diag_event=$1; diag_rc=$2
+    diag=$ROOT/service-diagnostics
+    for tool in id stat cat mkdir rmdir mv head rm awk; do
+        command -v "$tool" >/dev/null 2>&1 || return 1
+    done
+    [ "$(id -u)" = 0 ] && [ -d "$ROOT" ] && [ ! -L "$ROOT" ] &&
+    [ "$(stat -c '%u' "$ROOT")" = 0 ] && [ -f "$ROOT/.lp2-owned" ] &&
+    [ ! -L "$ROOT/.lp2-owned" ] && [ "$(cat "$ROOT/.lp2-owned")" = LP2-M7-RELEASE-V1 ] || return 1
+    umask 077
+    if [ ! -e "$diag" ] && [ ! -L "$diag" ]; then
+        mkdir "$diag" || return 1
+        printf '%s\n' LP2-M7.3-DIAG-V1 > "$diag/.lp2-owned" || return 1
+    fi
+    [ -d "$diag" ] && [ ! -L "$diag" ] && [ "$(stat -c '%u:%a' "$diag")" = 0:700 ] &&
+    [ -f "$diag/.lp2-owned" ] && [ ! -L "$diag/.lp2-owned" ] &&
+    [ "$(cat "$diag/.lp2-owned")" = LP2-M7.3-DIAG-V1 ] || return 1
+    for name in attempt.txt last-exit.txt last-failure.txt snapshot.next; do
+        [ ! -L "$diag/$name" ] || return 1
+        [ ! -e "$diag/$name" ] || [ -f "$diag/$name" ] || return 1
+    done
+    boot=$(cat "$PROC/sys/kernel/random/boot_id" 2>/dev/null) || boot=unavailable
+    uptime=$(cat "$PROC/uptime" 2>/dev/null) || uptime=unavailable
+    timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) || timestamp=unavailable
+    # Bound text BEFORE taking the lock; pipeline children must not inherit
+    # a lock cleanup trap. Command substitution removes only trailing newlines.
+    text=$({
+        printf 'schema=LP2-M7.3-DIAG-V1\nevent=%s\naction=%s\nexit_code=%s\n' "$diag_event" "$action" "$diag_rc"
+        printf 'timestamp_utc=%s\nboot_id=%s\nuptime=%s\nstage=%s\n' "$timestamp" "$boot" "$uptime" "$stage"
+        printf 'scan_pid=%s\nscan_phase=%s\nscan_directory_at_failure=%s\nidentity_before=%s\nidentity_after=%s\n' "$scan_pid" "$scan_phase" "$scan_directory" "${before:-unavailable}" "${after:-unavailable}"
+        printf 'scan_pass=%s\nscan_exit_check=%s\n' "$scan_pass" "$scan_exit_check"
+        printf 'service_pid=%s\nlast_pid_record_state=%s\nreason=%s\n' "${pid:-unavailable}" "${state:-unavailable}" "$reason"
+    } | head -c 2048) || return 1
+    diag_base=/var/volatile/tmp/lp2-media-diagnostics
+    diag_parent=${diag_base%/*}
+    # Entry logging happens before prepare_runtime. Prepare only this separate
+    # namespace; a missing early-boot volatile parent means console fallback,
+    # NEVER a service-start failure or mkdir -p through unknown ancestors.
+    [ -d "$diag_parent" ] && [ ! -L "$diag_parent" ] || return 1
+    case "$(stat -c '%u:%a' "$diag_parent")" in 0:1777|0:755|0:700) ;; *) return 1 ;; esac
+    if [ ! -e "$diag_base" ] && [ ! -L "$diag_base" ]; then
+        mkdir "$diag_base" || return 1
+        printf '%s\n' LP2-M7.4-DIAG-LOCK-V1 > "$diag_base/.lp2-owned" || return 1
+    fi
+    [ -d "$diag_base" ] && [ ! -L "$diag_base" ] &&
+    [ "$(stat -c '%u:%a' "$diag_base")" = 0:700 ] &&
+    [ -f "$diag_base/.lp2-owned" ] && [ ! -L "$diag_base/.lp2-owned" ] &&
+    [ "$(cat "$diag_base/.lp2-owned")" = LP2-M7.4-DIAG-LOCK-V1 ] || return 1
+    diagnostic_writer_identity || return 1
+    diag_lock=$diag_base/write.lock
+    diag_lock_owned=0
+    trap 'diagnostic_complete $?' EXIT
+    trap 'diagnostic_complete 130' INT
+    trap 'diagnostic_complete 143' TERM
+    trap 'diagnostic_complete 129' HUP
+    # Existing locks, even dead owners, are never automatically reclaimed.
+    mkdir "$diag_lock" 2>/dev/null || return 1
+    diag_token=$(stat -c '%d:%i' "$diag_lock") || return 1
+    cd "$diag_lock" || return 1
+    [ "$(stat -c '%d:%i' .)" = "$diag_token" ] || return 1
+    diag_owner="$diag_writer_boot $diag_writer_pid $diag_writer_ticks $diag_token"
+    printf '%s\n' "$diag_owner" > owner || return 1
+    diag_lock_owned=1
+    # Unexpected incomplete transactions are evidence, not overwritten.
+    diagnostic_lock_valid || diagnostic_complete 1
+    [ ! -e "$diag/snapshot.next" ] || diagnostic_complete 1
+    printf '%s' "$text" > "$diag/snapshot.next" || diagnostic_complete 1
+    diagnostic_lock_valid || diagnostic_complete 1
+    if [ "$diag_event" = entry ]; then
+        mv -T "$diag/snapshot.next" "$diag/attempt.txt" || diagnostic_complete 1
+    elif [ "$diag_rc" != 0 ]; then
+        mv -T "$diag/snapshot.next" "$diag/last-failure.txt" || diagnostic_complete 1
+        # Failure snapshot is preserved across later successful start/stop.
+        diagnostic_lock_valid || diagnostic_complete 1
+        head -c 2048 "$diag/last-failure.txt" > "$diag/snapshot.next" || diagnostic_complete 1
+        mv -T "$diag/snapshot.next" "$diag/last-exit.txt" || diagnostic_complete 1
+    else
+        mv -T "$diag/snapshot.next" "$diag/last-exit.txt" || diagnostic_complete 1
+    fi
+    diagnostic_complete 0
+)
+finish() {
+    result=$1
+    trap - EXIT INT TERM HUP
+    [ "$result" != 0 ] || reason=completed
+    if ! diagnostic exit "$result"; then
+        printf 'LP2 DIAGNOSTIC UNAVAILABLE: action=%s stage=%s exit=%s reason=%s\n' "$action" "$stage" "$result" "$reason" >&2
+    fi
+    if [ "$lock_owned" = 1 ]; then
+        rmdir "$RUNTIME/action.lock" || printf 'LP2: own action lock cleanup failed; inspect manually\n' >&2
+    fi
+    exit "$result"
+}
+version_ok() {
+    case "$1" in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*) return 1 ;; esac
+    [ "${#1}" -le 64 ]
+}
+safe_exe() {
+    case "$1" in "$ROOT"/releases/*/bin/lp2_rtsp_server)
+        version=${1#"$ROOT"/releases/}; version=${version%/bin/lp2_rtsp_server}
+        version_ok "$version" ;;
+        *) return 1 ;;
+    esac
+}
+runtime_owned() {
+    [ -d "$RUNTIME" ] && [ ! -L "$RUNTIME" ] &&
+    [ -f "$RUNTIME/.lp2-owned" ] && [ ! -L "$RUNTIME/.lp2-owned" ] &&
+    [ "$(cat "$RUNTIME/.lp2-owned")" = LP2-M7.3-RUNTIME-V1 ] || fail 'Unknown runtime directory; refusing takeover'
+    [ "$(stat -c '%u:%a' "$RUNTIME")" = 0:700 ] || fail 'Runtime directory must be root-owned mode 700'
+    for file in server.pid server.identity server.identity.next events.log events.log.1; do
+        [ ! -L "$RUNTIME/$file" ] || fail 'Runtime symlink forbidden'
+        [ ! -e "$RUNTIME/$file" ] || [ -f "$RUNTIME/$file" ] || fail 'Unexpected runtime file type'
+    done
+}
+prepare_runtime() {
+    stage=prepare_runtime
+    if [ ! -e "$RUNTIME" ] && [ ! -L "$RUNTIME" ]; then
+        umask 077
+        mkdir "$RUNTIME"
+        printf '%s\n' LP2-M7.3-RUNTIME-V1 > "$RUNTIME/.lp2-owned"
+    fi
+    runtime_owned
+    mkdir "$RUNTIME/action.lock" 2>/dev/null || fail 'Another service action or stale action lock; review manually'
+    lock_owned=1
+}
+event() {
+    # Bounded lifecycle-only logs in volatile storage: two ~32 KiB files.
+    # Never pipe media output into global syslog with unknown rotation policy.
+    runtime_owned
+    if [ -f "$RUNTIME/events.log" ] && [ "$(wc -c < "$RUNTIME/events.log")" -ge 32768 ]; then
+        mv -T "$RUNTIME/events.log" "$RUNTIME/events.log.1"
+    fi
+    printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1" >> "$RUNTIME/events.log"
+    printf 'LP2: %s\n' "$1"
+}
+stat_identity() {
+    line=$(cat "$1/stat") || return 1
+    [ "${line%% *}" = "${1##*/}" ] || return 1
+    case "$line" in "${1##*/} ("*") "*) ;; *) return 1 ;; esac
+    rest=${line##*) }
+    printf '%s\n' "$rest" | awk '
+      NF >= 20 && $1 ~ /^[RSDTtZXxKWPI]$/ && $7 ~ /^[0-9]+$/ &&
+      $7 <= 4294967295 && $20 ~ /^[0-9]+$/ {
+        printf "%s %d\n",$20,int($7/2097152)%2; ok=1
+      } END {if(!ok || NR!=1) exit 1}'
+}
+record_state() {
+    # 0 running ours; 3 absent/stale; 4 unknown, must not signal or restart.
+    [ -d "$PROC" ] && [ -r "$PROC" ] && [ -x "$PROC" ] || return 4
+    if [ ! -e "$PIDFILE" ] && [ ! -e "$IDENTITY" ]; then return 3; fi
+    [ -f "$PIDFILE" ] && [ -f "$IDENTITY" ] || return 4
+    pid=$(cat "$PIDFILE") || return 4
+    case "$pid" in ''|0|*[!0-9]*) return 4 ;; esac
+    record=$(cat "$IDENTITY") || return 4
+    # Fixed three-field record; executable paths cannot contain whitespace.
+    set -f
+    set -- $record
+    set +f
+    [ "$#" = 3 ] && [ "$1" = "$pid" ] || return 4
+    ticks=$2; pinned=$3
+    case "$ticks" in ''|*[!0-9]*) return 4 ;; esac
+    safe_exe "$pinned" || return 4
+    if [ ! -d "$PROC/$pid" ]; then
+        # stat presence/access anomalies are not evidence that a PID vanished.
+        [ ! -e "$PROC/$pid" ] && [ ! -L "$PROC/$pid" ] || return 4
+        return 3
+    fi
+    before=$(stat_identity "$PROC/$pid") || return 4
+    [ "${before% *}" = "$ticks" ] || return 3 # reused PID; NEVER signal it
+    [ "${before##* }" = 0 ] || return 4
+    actual=$(readlink "$PROC/$pid/exe") || return 4
+    [ "$actual" = "$pinned" ] || return 4
+    after=$(stat_identity "$PROC/$pid") || return 4
+    [ "$before" = "$after" ] || return 4
+    return 0
+}
+state_code() {
+    if record_state; then state=0; else state=$?; fi
+}
+remove_stale_records() {
+    runtime_owned
+    # Only these two validated LP2-owned regular files; never delete /proc.
+    rm -f "$PIDFILE" "$IDENTITY"
+}
+proc_visible() {
+    # Absence is meaningful only in a readable, searchable, unhidden procfs.
+    # Unknown/stacked mounts and hidepid configurations fail closed.
+    [ "$(id -u)" = 0 ] && [ -d "$PROC" ] && [ ! -L "$PROC" ] &&
+    [ -r "$PROC" ] && [ -x "$PROC" ] || return 1
+    awk -v expected="$PROC" '
+      $2==expected {
+        n++; if($3!="proc") bad=1
+        split($4,options,",")
+        for(i in options) if(options[i] ~ /^hidepid=/ && options[i]!="hidepid=0") bad=1
+      } END {if(n!=1 || bad) exit 1}' "$PROC/mounts"
+}
+confirmed_gone() {
+    # Never infer ESRCH from readlink/stat or a negative -d alone. Two complete
+    # directory inventories plus path checks, kill(0), and the same procfs
+    # identity must all confirm absence. No signal is delivered by kill -0.
+    scan_exit_check=checking
+    check_number=0
+    while [ "$check_number" -lt 2 ]; do
+        proc_visible || { scan_exit_check=proc_visibility_unknown; return 1; }
+        [ "$(stat -c '%d:%i' "$PROC")" = "$scan_parent" ] || { scan_exit_check=proc_mount_changed; return 1; }
+        if [ -e "$directory" ] || [ -L "$directory" ]; then scan_exit_check=pid_present; return 1; fi
+        if kill -0 "$candidate" 2>/dev/null; then scan_exit_check=pid_alive; return 1; fi
+        inventory=$(LC_ALL=C ls -1A "$PROC") || { scan_exit_check=inventory_unreadable; return 1; }
+        printf '%s\n' "$inventory" | awk -v pid="$candidate" '$0==pid {found=1} END {if(found) exit 1}' || {
+            scan_exit_check=pid_reappeared; return 1;
+        }
+        [ ! -e "$directory" ] && [ ! -L "$directory" ] || { scan_exit_check=pid_reappeared; return 1; }
+        [ "$(stat -c '%d:%i' "$PROC")" = "$scan_parent" ] || { scan_exit_check=proc_mount_changed; return 1; }
+        check_number=$((check_number + 1))
+    done
+    scan_exit_check=confirmed_absent_twice
+    return 0
+}
+scan_read_failed() {
+    if confirmed_gone; then
+        # A vanished PID is not authorization to launch: require another full
+        # sweep. If this PID ever reappears during retries, reject reuse.
+        gone_pids="$gone_pids $candidate "
+        scan_repeat=1
+        return 0
+    fi
+    fail "$1: PID=$candidate; exit_check=$scan_exit_check; refusing start"
+}
+no_unmanaged_lp2() {
+    stage=proc_scan
+    proc_visible || fail 'Cannot establish unhidden procfs visibility; refusing start'
+    scan_parent=$(stat -c '%d:%i' "$PROC") || fail 'Cannot identify procfs root'
+    [ -n "$scan_parent" ] || fail 'Empty procfs identity'
+    scan_pass=0; gone_pids=' '; seen_pids=' '
+    while [ "$scan_pass" -lt "$SCAN_PASSES" ]; do
+      scan_pass=$((scan_pass + 1)); scan_repeat=0
+      proc_visible || fail 'Procfs visibility changed during scan'
+      [ "$(stat -c '%d:%i' "$PROC")" = "$scan_parent" ] || fail 'Procfs root changed during scan'
+      for directory in "$PROC"/[0-9]*; do
+        candidate=${directory##*/}
+        case "$candidate" in ''|*[!0-9]*) continue ;; esac
+        scan_pid=$candidate; scan_phase=directory_before; scan_exit_check=not_checked
+        before=unavailable; after=unavailable
+        case "$gone_pids" in *" $candidate "*) fail "PID reappeared after confirmed exit: PID=$candidate; possible reuse" ;; esac
+        if token_before=$(stat -c '%d:%i' "$directory"); then :; else
+            scan_read_failed 'Cannot inspect process directory'; continue
+        fi
+        scan_phase=stat_before
+        if before=$(stat_identity "$directory"); then :; else
+            scan_read_failed 'Cannot inspect process stat'; continue
+        fi
+        observed="${before% *}:${before##* }:${token_before}"
+        case "$seen_pids" in *" $candidate:"*)
+            saved=${seen_pids#*" $candidate:"}; saved=${saved%% *}
+            [ "$saved" = "$observed" ] || fail "PID identity changed across sweeps: PID=$candidate; refusing start" ;;
+          *) seen_pids="$seen_pids$candidate:$observed " ;;
+        esac
+        if [ "${before##* }" = 1 ]; then
+            scan_phase=kernel_stat_after
+            if after=$(stat_identity "$directory"); then :; else
+                scan_read_failed 'Kernel thread unreadable during scan'; continue
+            fi
+            [ "$before" = "$after" ] || fail "PID reused during scan: PID=$candidate"
+            scan_phase=kernel_directory_after
+            if token_after=$(stat -c '%d:%i' "$directory"); then :; else
+                scan_read_failed 'Kernel thread directory unreadable after stat'; continue
+            fi
+            [ "$token_after" = "$token_before" ] || fail "Process directory identity changed: PID=$candidate"
+            continue
+        fi
+        scan_phase=readlink
+        if target=$(readlink "$directory/exe"); then :; else
+            scan_read_failed 'Cannot inspect user executable'; continue
+        fi
+        case "$target" in /*) ;; *) fail "Invalid executable path: PID=$candidate" ;; esac
+        # A positively observed LP2 executable always rejects duplicate start,
+        # even if that process exits before the following stat recheck.
+        case "$target" in
+          "$ROOT"/*|/tmp/lp2_m5_rtsp_server|/var/volatile/tmp/lp2_m5_rtsp_server|/tmp/lp2_m5_rtsp_server\ \(deleted\)|/var/volatile/tmp/lp2_m5_rtsp_server\ \(deleted\))
+            fail 'Unmanaged LP2 already running; manually stop the known process first' ;;
+        esac
+        scan_phase=user_stat_after
+        if after=$(stat_identity "$directory"); then :; else
+            scan_read_failed 'User process unreadable after executable check'; continue
+        fi
+        [ "$before" = "$after" ] || fail "PID reused during scan: PID=$candidate"
+        scan_phase=user_directory_after
+        if token_after=$(stat -c '%d:%i' "$directory"); then :; else
+            scan_read_failed 'User process directory unreadable after stat'; continue
+        fi
+        [ "$token_after" = "$token_before" ] || fail "Process directory identity changed: PID=$candidate"
+      done
+      [ "$(stat -c '%d:%i' "$PROC")" = "$scan_parent" ] || fail 'Procfs root changed at end of scan'
+      if [ "$scan_repeat" = 0 ]; then scan_phase=complete; return 0; fi
+      [ "$scan_pass" -lt "$SCAN_PASSES" ] || fail "Process scan did not converge after $SCAN_PASSES sweeps; refusing start"
+      scan_phase=retry_wait
+      sleep 1
+    done
+    fail 'Process scan exhausted without a complete sweep'
+}
+release_ready() {
+    stage=release_ready
+    [ -d "$ROOT" ] && [ ! -L "$ROOT" ] && [ -f "$ROOT/.lp2-owned" ] &&
+    [ "$(stat -c '%u' "$ROOT")" = 0 ] && [ ! -L "$ROOT/.lp2-owned" ] &&
+    [ "$(cat "$ROOT/.lp2-owned")" = LP2-M7-RELEASE-V1 ] || fail 'Release root is not root/LP2-owned'
+    [ -L "$ROOT/current" ] || fail 'No activated current release'
+    executable=$(readlink -f "$ROOT/current/bin/lp2_rtsp_server") || fail 'Cannot resolve current executable'
+    safe_exe "$executable" || fail 'current escapes LP2 releases'
+    release=${executable%/bin/lp2_rtsp_server}
+    [ "$(readlink -f "$ROOT/current")" = "$release" ] || fail 'current directory and executable resolve to different releases'
+    [ -d "$ROOT/releases" ] && [ ! -L "$ROOT/releases" ] && [ -d "$release" ] &&
+    [ ! -L "$release" ] && [ ! -L "$release/bin" ] && [ -f "$executable" ] &&
+    [ ! -L "$executable" ] && [ -x "$executable" ] || fail 'Unsafe release layout'
+    for file in manifest run-args.txt SHA256SUMS; do
+        [ -f "$release/$file" ] && [ ! -L "$release/$file" ] || fail 'Unsafe release metadata'
+    done
+    [ -d "$ROOT/verified" ] && [ ! -L "$ROOT/verified" ] &&
+    [ -f "$ROOT/verified/$version" ] && [ ! -L "$ROOT/verified/$version" ] || fail 'Missing version approval'
+    hash=$(sha256sum "$executable" | awk '{print $1}')
+    [ "${#hash}" = 64 ] || fail 'Cannot hash release binary'
+    [ "$(cat "$ROOT/verified/$version")" = "$hash" ] &&
+    [ "$(sed -n 's/^binary_sha256=//p' "$release/manifest")" = "$hash" ] || fail 'Binary approval/hash mismatch'
+    args_hash=$(awk '$2=="run-args.txt" {print $1}' "$release/SHA256SUMS")
+    [ "${#args_hash}" = 64 ] && [ "$args_hash" = "$(sha256sum "$release/run-args.txt" | awk '{print $1}')" ] || fail 'Runtime argument checksum mismatch'
+    arguments=$(cat "$release/run-args.txt")
+    [ "$arguments" = "$EXPECTED_ARGS" ] || fail 'Runtime profile differs from approved normal configuration'
+}
+start_service() {
+    stage=pid_state
+    state_code
+    case "$state" in
+      0) event 'Already running (identity verified)'; return 0 ;;
+      3) remove_stale_records ;;
+      *) fail 'Unknown PID identity; refusing duplicate start' ;;
+    esac
+    release_ready
+    no_unmanaged_lp2
+    stage=camera_wait
+    waited=0
+    while ! camera_ready; do
+        [ "$waited" -lt "$CAMERA_WAIT" ] || { reason='Camera readiness timeout (no auto-retry)'; event "$reason"; return 1; }
+        sleep 1; waited=$((waited + 1))
+    done
+    [ ! -e "$RUNTIME/server.identity.next" ] || fail 'Stale identity transaction; inspect manually'
+    set -f
+    set -- $arguments
+    set +f
+    # Real binary is exec target. No wrapper, forever loop or respawn process.
+    # Media stdout/stderr are deliberately discarded to guarantee zero growth.
+    stage=launch_ssd
+    if "$SSD" --start --background --make-pidfile --pidfile "$PIDFILE" --exec "$executable" -- "$@" </dev/null >/dev/null 2>&1; then
+        :
+    else
+        ssd_rc=$?
+        reason="start-stop-daemon launch failed: exit=$ssd_rc"
+        event "$reason"; return 1
+    fi
+    stage=confirm_start
+    waited=0
+    while [ "$waited" -lt "$START_WAIT" ]; do
+        if [ -f "$PIDFILE" ] && [ ! -L "$PIDFILE" ]; then
+            pid=$(cat "$PIDFILE")
+            case "$pid" in ''|0|*[!0-9]*) fail 'Invalid daemon PID file' ;; esac
+            if before=$(stat_identity "$PROC/$pid") && target=$(readlink "$PROC/$pid/exe") &&
+               after=$(stat_identity "$PROC/$pid") && [ "$before" = "$after" ] &&
+               [ "${before##* }" = 0 ] && [ "$target" = "$executable" ]; then
+                printf '%s %s %s\n' "$pid" "${before% *}" "$executable" > "$RUNTIME/server.identity.next"
+                mv -T "$RUNTIME/server.identity.next" "$IDENTITY"
+                event "Started pid=$pid (process identity confirmed; RTSP playback not yet verified)"
+                return 0
+            fi
+        fi
+        sleep 1; waited=$((waited + 1))
+    done
+    reason='Startup confirmation timeout; retained PID evidence, manual review required'
+    event "$reason"
+    return 1
+}
+camera_ready() { [ -c "$CAMERA" ] && [ -r "$CAMERA" ] && [ -w "$CAMERA" ]; }
+stop_service() {
+    stage=stop_identity
+    state_code
+    case "$state" in
+      3) remove_stale_records; event 'Stopped or stale PID (no signal sent)'; return 0 ;;
+      0) ;;
+      *) fail 'Unknown process identity; refusing to signal' ;;
+    esac
+    # Double gate: own PID/start tick/exe check plus SSD --pidfile AND --exec.
+    stage=stop_term
+    if ! "$SSD" --stop --signal TERM --pidfile "$PIDFILE" --exec "$pinned"; then
+        state_code
+        [ "$state" = 3 ] || fail 'TERM failed or identity became unknown'
+    fi
+    waited=0
+    stage=stop_wait
+    while [ "$waited" -lt "$STOP_WAIT" ]; do
+        state_code
+        case "$state" in
+          3) remove_stale_records; event 'Stopped after TERM; no forced kill'; return 0 ;;
+          0) ;;
+          *) : ;; # May be an exit/reap race; bounded recheck, NEVER another signal.
+        esac
+        sleep 1; waited=$((waited + 1))
+    done
+    reason='Graceful stop timeout; PID retained, no SIGKILL, restart refused'
+    event "$reason"
+    return 1
+}
+check_tools() {
+    stage=check_tools
+    for tool in cat awk sed readlink sha256sum wc date mv mkdir rmdir rm sleep id grep stat ls; do
+        command -v "$tool" >/dev/null || fail "Missing tool: $tool"
+    done
+    [ -x "$SSD" ] || fail 'start-stop-daemon unavailable'
+    help=$("$SSD" --help 2>&1) || fail 'Cannot inspect start-stop-daemon options'
+    for option in --start --stop --background --make-pidfile --pidfile --exec --signal; do
+        printf '%s\n' "$help" | grep -q -- "$option" || fail "Unsupported start-stop-daemon option: $option"
+    done
+    mv --help 2>&1 | grep -q '\-T' || fail 'mv -T unavailable'
+}
+recovery_load() {
+    recovery_enabled=0
+    helper=$ROOT/service-tools/lp2-watchdog
+    receipt=$ROOT/service-management/watchdog.sha256
+    if [ ! -e "$helper" ] && [ ! -L "$helper" ] && [ ! -e "$receipt" ] && [ ! -L "$receipt" ]; then
+        return 0 # M7.3-only installation remains compatible.
+    fi
+    [ -d "$ROOT/service-tools" ] && [ ! -L "$ROOT/service-tools" ] &&
+    [ "$(stat -c '%u:%a' "$ROOT/service-tools")" = 0:755 ] &&
+    [ -f "$ROOT/service-tools/.lp2-owned" ] && [ ! -L "$ROOT/service-tools/.lp2-owned" ] &&
+    [ "$(cat "$ROOT/service-tools/.lp2-owned")" = LP2-M7.4-TOOLS-V1 ] &&
+    [ -f "$helper" ] && [ ! -L "$helper" ] &&
+    [ "$(stat -c '%u:%a' "$helper")" = 0:755 ] &&
+    [ -d "$ROOT/service-management" ] && [ ! -L "$ROOT/service-management" ] &&
+    [ "$(stat -c '%u:%a' "$ROOT/service-management")" = 0:700 ] &&
+    [ -f "$ROOT/service-management/.lp2-owned" ] && [ ! -L "$ROOT/service-management/.lp2-owned" ] &&
+    [ "$(cat "$ROOT/service-management/.lp2-owned")" = LP2-M7.3-INSTALL-V1 ] &&
+    [ -f "$receipt" ] && [ ! -L "$receipt" ] || fail 'Unsafe watchdog installation'
+    helper_sha=$(cat "$receipt")
+    [ "${#helper_sha}" = 64 ] && [ "$helper_sha" = "$(sha256sum "$helper" | awk '{print $1}')" ] || fail 'Watchdog receipt/hash mismatch'
+    command -v tr >/dev/null || fail 'Watchdog requires tr'
+    LP2_WD_LIBRARY=1
+    . "$helper"
+    unset LP2_WD_LIBRARY
+    wd_paths
+    recovery_enabled=1
+}
+managed_start() {
+    recovery_load
+    if [ "$recovery_enabled" = 1 ]; then wd_intent running || fail 'Cannot enable recovery intent'; fi
+    start_service
+    if [ "$recovery_enabled" = 1 ]; then wd_start || fail 'Watchdog did not start safely'; fi
+}
+managed_stop() {
+    recovery_load
+    if [ "$recovery_enabled" = 1 ]; then
+        # Disable BEFORE stopping either process, while holding action.lock.
+        wd_intent stopped || fail 'Cannot disable recovery intent'
+        wd_stop || fail 'Watchdog stop failed; intent remains stopped'
+    fi
+    stop_service
+}
+recover_service() {
+    recovery_load
+    [ "$recovery_enabled" = 1 ] || fail 'Recovery helper not installed'
+    wd_read || fail 'Unknown recovery state'
+    [ "$wd_desired" = running ] && [ "$wd_locked" = 0 ] || return 0
+    state_code
+    case "$state" in
+      0) return 0 ;;
+      3)
+        # A stale record pointing at a live reused PID is NOT a crash proof.
+        if [ -n "${pid:-}" ] && { [ -e "$PROC/$pid" ] || [ -L "$PROC/$pid" ]; }; then
+            wd_fault pid_reuse_lock || return 1
+            fail 'Reused server PID; recovery locked'
+        fi ;;
+      *) wd_fault identity_unknown_lock || return 1; fail 'Unknown server identity; recovery locked' ;;
+    esac
+    if wd_reserve; then :; else return 1; fi
+    # Only real recovery attempts write lifecycle diagnostic snapshots.
+    trap 'finish $?' EXIT
+    diagnostic entry pending || :
+    check_tools
+    start_service
+    wd_event recovery_start_identity_confirmed
+}
+# Explicit library mode is used by the approved independent watchdog only.
+if [ "${LP2_SERVICE_LIBRARY:-0}" = 1 ]; then return 0; fi
+case "$action" in
+  status)
+    if [ ! -e "$RUNTIME" ] && [ ! -L "$RUNTIME" ]; then printf 'LP2: not running (no runtime directory)\n'; exit 3; fi
+    runtime_owned; state_code
+    case "$state" in 0) printf 'LP2: running pid=%s start_ticks=%s executable=%s\n' "$pid" "$ticks" "$pinned" ;;
+      3) printf 'LP2: not running (absent/stale record)\n' ;;
+      *) printf 'LP2: UNKNOWN identity; manual inspection required\n' >&2 ;; esac
+    exit "$state" ;;
+  start|stop|restart)
+    trap 'finish $?' EXIT
+    trap 'reason="Service command interrupted (INT)"; exit 130' INT
+    trap 'reason="Service command interrupted (TERM)"; exit 143' TERM
+    trap 'reason="Service command interrupted (HUP)"; exit 129' HUP
+    if ! diagnostic entry pending; then
+        printf 'LP2: persistent diagnostic unavailable at entry; console fallback only\n' >&2
+    fi
+    [ "$(id -u)" = 0 ] || fail 'Root required'
+    umask 077
+    check_tools; prepare_runtime
+    case "$action" in start) managed_start ;; stop) managed_stop ;;
+      restart) managed_stop; managed_start ;; esac ;;
+  recover)
+    [ "$(id -u)" = 0 ] || fail 'Root required'
+    runtime_owned
+    # A busy management action is normal: retry next poll, never steal its lock.
+    mkdir "$RUNTIME/action.lock" 2>/dev/null || exit 75
+    lock_owned=1
+    trap 'rmdir "$RUNTIME/action.lock"' EXIT
+    recover_service ;;
+  reset-recovery)
+    [ "$(id -u)" = 0 ] || fail 'Root required'
+    umask 077
+    check_tools; prepare_runtime
+    trap 'finish $?' EXIT
+    recovery_load
+    [ "$recovery_enabled" = 1 ] || fail 'Watchdog not installed'
+    wd_reset || fail 'Recovery reset failed'
+    printf 'LP2: recovery lock reset; no process started\n' ;;
+  watchdog-status)
+    recovery_load
+    [ "$recovery_enabled" = 1 ] || fail 'Watchdog not installed'
+    wd_read || fail 'Recovery state unreadable'
+    printf 'desired=%s locked=%s attempts=%s\n' "$wd_desired" "$wd_locked" "$wd_attempts"
+    if wd_identity; then printf 'Watchdog identity verified pid=%s\n' "$wpid"; else exit "$?"; fi ;;
+  check) check_tools; release_ready; printf 'LP2: activated release and runtime profile verified; no process started\n' ;;
+  *) printf 'Usage: lp2-media {start|stop|restart|status|check|watchdog-status|reset-recovery}\n' >&2; exit 2 ;;
+esac

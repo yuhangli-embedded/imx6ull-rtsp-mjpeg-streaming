@@ -1,0 +1,204 @@
+#!/bin/sh
+# LP2-M7.4-WATCHDOG-V1
+# Also a trusted function library, loaded only after receipt/SHA verification.
+wd_paths() {
+    WD=$ROOT/service-tools/lp2-watchdog
+    WS=$ROOT/recovery-state
+    WL=$RUNTIME/watchdog.lock
+    WP=$RUNTIME/watchdog.pid
+}
+wd_error() { printf 'LP2 WATCHDOG ERROR: %s\n' "$*" >&2; return 1; }
+wd_owned() {
+    [ -d "$WS" ] && [ ! -L "$WS" ] && [ "$(stat -c '%u:%a' "$WS")" = 0:700 ] &&
+    [ -f "$WS/.lp2-owned" ] && [ ! -L "$WS/.lp2-owned" ] &&
+    [ "$(cat "$WS/.lp2-owned")" = LP2-M7.4-STATE-V1 ] || return 1
+    for wd_file_name in state state.next events.log events.log.1; do
+        [ ! -L "$WS/$wd_file_name" ] && { [ ! -e "$WS/$wd_file_name" ] || [ -f "$WS/$wd_file_name" ]; } || return 1
+    done
+}
+wd_clock() {
+    wb=$(cat "$PROC/sys/kernel/random/boot_id") || return 1
+    case "$wb" in ''|*[!0-9a-f-]*) return 1 ;; esac
+    [ "${#wb}" = 36 ] || return 1
+    wn=$(awk 'NR==1 && $1 ~ /^[0-9]+([.][0-9]+)?$/ && $1 < 2147483647 {printf "%.0f\n",int($1);ok=1} END {if(!ok||NR!=1)exit 1}' "$PROC/uptime") || return 1
+}
+wd_read() {
+    wd_owned || return 1
+    [ -f "$WS/state" ] && [ "$(wc -c < "$WS/state")" -lt 256 ] || return 1
+    wr=$(cat "$WS/state") || return 1
+    set -f; set -- $wr; set +f
+    [ "$#" = 7 ] && [ "$1" = LP2-M7.4-STATE-V1 ] || return 1
+    wd_desired=$2; wd_locked=$3; wd_boot=$4; wd_window=$5; wd_attempts=$6; wd_last=$7
+    case "$wd_desired:$wd_locked" in running:0|running:1|stopped:0|stopped:1) ;; *) return 1 ;; esac
+    case "$wd_boot" in ''|*[!0-9a-f-]*) return 1 ;; esac
+    [ "${#wd_boot}" = 36 ] || return 1
+    for wnval in "$wd_window" "$wd_last"; do
+        case "$wnval" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+        [ "$wnval" -lt 2147483647 ] || return 1
+    done
+    case "$wd_attempts" in 0|1|2|3) ;; *) return 1 ;; esac
+    [ "$wd_last" -ge "$wd_window" ]
+}
+wd_write() {
+    # All state mutations are serialized by lp2-media's existing action.lock.
+    wd_owned && [ ! -e "$WS/state.next" ] || return 1
+    printf 'LP2-M7.4-STATE-V1 %s %s %s %s %s %s\n' "$wd_desired" "$wd_locked" "$wd_boot" "$wd_window" "$wd_attempts" "$wd_last" > "$WS/state.next" || return 1
+    mv -T "$WS/state.next" "$WS/state"
+}
+wd_event() {
+    wd_owned || return 1
+    if [ -f "$WS/events.log" ] && [ "$(wc -c < "$WS/events.log")" -ge 16384 ]; then
+        mv -T "$WS/events.log" "$WS/events.log.1" || return 1
+    fi
+    # Fixed internal messages only; no per-frame or per-poll normal-state log.
+    printf 'boot=%s uptime=%s event=%s\n' "${wb:-unknown}" "${wn:-unknown}" "$1" >> "$WS/events.log"
+}
+wd_init_state() {
+    wd_clock || return 1
+    if [ ! -e "$WS" ] && [ ! -L "$WS" ]; then
+        mkdir "$WS" || return 1
+        printf '%s\n' LP2-M7.4-STATE-V1 > "$WS/.lp2-owned" || return 1
+        wd_desired=stopped; wd_locked=0; wd_boot=$wb; wd_window=$wn; wd_attempts=0; wd_last=$wn
+        wd_write || return 1
+    fi
+    wd_read
+}
+wd_intent() {
+    wd_init_state || { wd_error 'Recovery state/clock unsafe'; return 1; }
+    wd_desired=$1
+    wd_write && wd_event "manual_$1"
+}
+wd_fault() {
+    wd_read || return 1
+    wd_locked=1
+    wd_write && wd_event "$1"
+}
+wd_reset() {
+    wd_init_state || return 1
+    wd_locked=0; wd_boot=$wb; wd_window=$wn; wd_attempts=0; wd_last=$wn
+    wd_write && wd_event explicit_reset
+}
+wd_reserve() {
+    wd_read || return 1
+    if wd_clock; then :; else wd_fault clock_unavailable_lock; return 1; fi
+    [ "$wd_desired" = running ] && [ "$wd_locked" = 0 ] || return 2
+    if [ "$wd_boot" != "$wb" ]; then
+        # Carry attempts across boot; never subtract clocks from different boots.
+        wd_boot=$wb; wd_window=$wn; wd_last=$wn
+    elif [ "$wn" -lt "$wd_last" ]; then
+        wd_fault clock_regression_lock; return 1
+    fi
+    # Require 300 quiet seconds since the LAST attempt, not a fixed bucket:
+    # this prevents six retries straddling a five-minute bucket boundary.
+    if [ $((wn - wd_last)) -ge 300 ]; then wd_window=$wn; wd_attempts=0; fi
+    if [ "$wd_attempts" -ge 3 ]; then wd_fault rate_limit_lock; return 2; fi
+    wd_attempts=$((wd_attempts + 1)); wd_last=$wn
+    wd_write && wd_event abnormal_exit_recovery_attempt
+}
+wd_identity() {
+    # 0 exact watchdog; 3 positively gone; 4 unknown/reused. No name matching.
+    [ -d "$WL" ] && [ ! -L "$WL" ] && [ "$(stat -c '%u:%a' "$WL")" = 0:700 ] || return 4
+    [ -f "$WL/owner" ] && [ ! -L "$WL/owner" ] && [ ! -L "$WP" ] && [ -f "$WP" ] || return 4
+    wo=$(cat "$WL/owner") || return 4
+    set -f; set -- $wo; set +f
+    [ "$#" = 4 ] || return 4
+    wpid=$1; wticks=$2; wexe=$3; wboot=$4
+    case "$wpid:$wticks" in *[!0-9:]*|:*) return 4 ;; esac
+    [ "$wpid" -gt 0 ] && [ -n "$wticks" ] && [ "$(cat "$WP")" = "$wpid" ] || return 4
+    wd_clock || return 4
+    # Boot-mismatched leftovers require manual review, not automatic deletion.
+    [ "$wb" = "$wboot" ] || return 4
+    if [ ! -e "$PROC/$wpid" ] && [ ! -L "$PROC/$wpid" ]; then
+        proc_visible || return 4
+        kill -0 "$wpid" 2>/dev/null && return 4
+        return 3
+    fi
+    wi=$(stat_identity "$PROC/$wpid") || return 4
+    [ "$wi" = "$wticks 0" ] && [ "$(readlink "$PROC/$wpid/exe")" = "$wexe" ] || return 4
+    tr '\000' '\n' < "$PROC/$wpid/cmdline" | awk -v script="$WD" '
+      NR==1 {if($0!="/bin/sh")bad=1} NR==2 {if($0!=script)bad=1}
+      NR==3 {if($0!="run")bad=1} NR==4 {if($0!~/^[0-9]+$/)bad=1}
+      END {if(NR!=4||bad)exit 1}' || return 4
+    [ "$(stat_identity "$PROC/$wpid")" = "$wi" ] || return 4
+    return 0
+}
+wd_cleanup_dead() {
+    if wd_identity; then return 1; else wc_rc=$?; fi
+    [ "$wc_rc" = 3 ] || return 1
+    # Same record and still absent immediately before deleting exact owned files.
+    [ "$(cat "$WL/owner")" = "$wo" ] && [ ! -e "$PROC/$wpid" ] && [ ! -L "$PROC/$wpid" ] || return 1
+    rm "$WL/owner" "$WP" && rmdir "$WL"
+}
+wd_start() {
+    wi_sec=${LP2_WATCHDOG_INTERVAL_SEC:-5}
+    case "$wi_sec" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+    [ "$wi_sec" -ge 1 ] && [ "$wi_sec" -le 60 ] || return 1
+    if [ -e "$WL" ] || [ -L "$WL" ] || [ -e "$WP" ] || [ -L "$WP" ]; then
+        if wd_identity; then return 0; else ws_rc=$?; fi
+        [ "$ws_rc" = 3 ] && wd_cleanup_dead || { wd_error 'Watchdog identity/leftover unknown'; return 1; }
+        wd_event watchdog_dead_manually_restarted || return 1
+    fi
+    "$SSD" --start --background --make-pidfile --pidfile "$WP" --exec /bin/sh -- "$WD" run "$wi_sec" </dev/null >/dev/null 2>&1 || return 1
+    ws_wait=0
+    while [ "$ws_wait" -lt 5 ]; do
+        if wd_identity; then return 0; fi
+        sleep 1; ws_wait=$((ws_wait + 1))
+    done
+    wd_error 'Watchdog confirmation failed; inspect retained evidence'
+}
+wd_stop() {
+    [ -e "$WL" ] || [ -L "$WL" ] || [ -e "$WP" ] || [ -L "$WP" ] || return 0
+    if wd_identity; then :; else ws_rc=$?; [ "$ws_rc" = 3 ] && wd_cleanup_dead; return $?; fi
+    "$SSD" --stop --signal TERM --pidfile "$WP" --exec "$wexe" || return 1
+    ws_wait=0
+    while [ "$ws_wait" -lt 10 ]; do
+        if [ ! -e "$WL" ] && [ ! -e "$WP" ]; then return 0; fi
+        if wd_identity; then :; else ws_rc=$?; [ "$ws_rc" != 3 ] || { wd_cleanup_dead; return $?; }; fi
+        sleep 1; ws_wait=$((ws_wait + 1))
+    done
+    wd_error 'Watchdog TERM timeout; no forced kill'
+}
+wd_run_finish() {
+    trap - EXIT INT TERM HUP
+    # Only our lock/record, never remove another instance's evidence.
+    if [ "$(cat "$WL/owner" 2>/dev/null)" = "$wd_own_record" ]; then
+        rm "$WL/owner" "$WP"; rmdir "$WL"
+    fi
+    exit "$1"
+}
+wd_recover_command() {
+    /bin/sh /etc/init.d/lp2-media recover </dev/null >/dev/null 2>&1
+}
+wd_run() {
+    case "$1" in ''|*[!0-9]*|0[0-9]*) exit 1 ;; esac
+    [ "$1" -ge 1 ] && [ "$1" -le 60 ] || exit 1
+    wd_poll=$1
+    recovery_load
+    [ "$recovery_enabled" = 1 ] || exit 1
+    runtime_owned; wd_owned; wd_clock
+    mkdir "$WL" || exit 1
+    wi=$(stat_identity "$PROC/$$") || exit 1
+    we=$(readlink "$PROC/$$/exe") || exit 1
+    wd_own_record="$$ ${wi% *} $we $wb"
+    printf '%s\n' "$wd_own_record" > "$WL/owner"
+    trap 'wd_run_finish $?' EXIT
+    trap 'exit 0' INT TERM HUP
+    # Foreground commands are reaped by the shell. No detached per-poll workers.
+    while :; do
+        sleep "$wd_poll"
+        if wd_recover_command; then :; else
+            # Busy/unknown/locked is fail-safe; never start the binary here.
+            :
+        fi
+    done
+}
+if [ "${LP2_WD_LIBRARY:-0}" != 1 ]; then
+    set -eu
+    # Load existing identity helpers without dispatch. The service recognizes
+    # this explicit library mode; normal SysV entry still executes its case.
+    LP2_SERVICE_LIBRARY=1
+    . /etc/init.d/lp2-media
+    wd_paths
+    [ "${1:-}" = run ] && [ "$#" = 2 ] || exit 2
+    wd_run "$2"
+fi

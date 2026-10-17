@@ -1,0 +1,520 @@
+{
+  "schema": "lp2-public-source-map-v1",
+  "origin_description": "Frozen LP2 private workspace; logical relative paths only, not accessed by public builds.",
+  "files": [
+    {
+      "origin_path": "m5_rtsp_server/CMakeLists.txt",
+      "origin_sha256": "0beb3dff505d196064aa54d5a97b93433b0038154275dd52fb94a32568a8c32b",
+      "public_path": "m5_rtsp_server/CMakeLists.txt",
+      "public_sha256": "df1b791bb828abdc61da11ce0154e990c94ed6c331981aef3c4a039fa24265bb",
+      "status": "adapted-public-test-or-build",
+      "difference": "Public BUILD_TESTING guard and synthetic fixture path; media target source/link logic unchanged."
+    },
+    {
+      "origin_path": "m5_rtsp_server/src/main.cpp",
+      "origin_sha256": "c27d4733508bb5952d11f7c80e5ac8688fd9eb253d5c0f74d204ea386e0ee423",
+      "public_path": "m5_rtsp_server/src/main.cpp",
+      "public_sha256": "c27d4733508bb5952d11f7c80e5ac8688fd9eb253d5c0f74d204ea386e0ee423",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/src/fanout_frame_pool.cpp",
+      "origin_sha256": "462ec9788b5d1ad843252cfdce4e1101eccd704bfeb41018cbcebd07b10a0731",
+      "public_path": "m5_rtsp_server/src/fanout_frame_pool.cpp",
+      "public_sha256": "462ec9788b5d1ad843252cfdce4e1101eccd704bfeb41018cbcebd07b10a0731",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/src/rtsp_client_session.cpp",
+      "origin_sha256": "7cc380f00e0782ca12a4a172c9da6a63c4688d9e44dba473237be685e5e8deb3",
+      "public_path": "m5_rtsp_server/src/rtsp_client_session.cpp",
+      "public_sha256": "7cc380f00e0782ca12a4a172c9da6a63c4688d9e44dba473237be685e5e8deb3",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/src/rtsp_protocol.cpp",
+      "origin_sha256": "355da61e0174fbef38eb5859ecf07ec6309de5c6392dfa53046939a3c0bb1e2c",
+      "public_path": "m5_rtsp_server/src/rtsp_protocol.cpp",
+      "public_sha256": "355da61e0174fbef38eb5859ecf07ec6309de5c6392dfa53046939a3c0bb1e2c",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/src/rtsp_server.cpp",
+      "origin_sha256": "177088b1808389d17ff96616e8e960e675c8dac734ab466131b959e04c356434",
+      "public_path": "m5_rtsp_server/src/rtsp_server.cpp",
+      "public_sha256": "177088b1808389d17ff96616e8e960e675c8dac734ab466131b959e04c356434",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/include/lp2/fanout_frame_pool.hpp",
+      "origin_sha256": "970c7ec4f57f067da4883a669b453dcc01081ac5d045057202ec6d0199071e77",
+      "public_path": "m5_rtsp_server/include/lp2/fanout_frame_pool.hpp",
+      "public_sha256": "970c7ec4f57f067da4883a669b453dcc01081ac5d045057202ec6d0199071e77",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/include/lp2/rtsp_client_session.hpp",
+      "origin_sha256": "0eefb30b073611265c617b224a9994cc01ebf89194a3d1c3c4d2fd5777599a17",
+      "public_path": "m5_rtsp_server/include/lp2/rtsp_client_session.hpp",
+      "public_sha256": "0eefb30b073611265c617b224a9994cc01ebf89194a3d1c3c4d2fd5777599a17",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/include/lp2/rtsp_protocol.hpp",
+      "origin_sha256": "0a3c59a64396348251d6d89fad9ddc30aa1b5d48a711ae66bd6721808d7bc4cc",
+      "public_path": "m5_rtsp_server/include/lp2/rtsp_protocol.hpp",
+      "public_sha256": "0a3c59a64396348251d6d89fad9ddc30aa1b5d48a711ae66bd6721808d7bc4cc",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/include/lp2/rtsp_server.hpp",
+      "origin_sha256": "b1cb838ea995d6885a060ebcd0883a7b4261f6086705e3a1160d613b0014b1cd",
+      "public_path": "m5_rtsp_server/include/lp2/rtsp_server.hpp",
+      "public_sha256": "b1cb838ea995d6885a060ebcd0883a7b4261f6086705e3a1160d613b0014b1cd",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/tests/fanout_frame_pool_tests.cpp",
+      "origin_sha256": "84bd92cf0c510ff7ece178df0c3347858d3c4d71301f50fc06353a6960a30c58",
+      "public_path": "m5_rtsp_server/tests/fanout_frame_pool_tests.cpp",
+      "public_sha256": "84bd92cf0c510ff7ece178df0c3347858d3c4d71301f50fc06353a6960a30c58",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/tests/rtsp_protocol_tests.cpp",
+      "origin_sha256": "966cdd122e89137ede5f6eade06f81d8ea3d3327dbce6e81d6b280ca1798e21a",
+      "public_path": "m5_rtsp_server/tests/rtsp_protocol_tests.cpp",
+      "public_sha256": "966cdd122e89137ede5f6eade06f81d8ea3d3327dbce6e81d6b280ca1798e21a",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m5_rtsp_server/tests/rtsp_rtp_tests.cpp",
+      "origin_sha256": "649d03c6772c17b566e9fd96c8ee628ac34020c9991142703d8b4422aeb5c095",
+      "public_path": "m5_rtsp_server/tests/rtsp_rtp_tests.cpp",
+      "public_sha256": "d972b0d8a23fbf315de8a5e806bf4917acc2b2d2f36f1dba0a989e189b666c0f",
+      "status": "adapted-public-test-or-build",
+      "difference": "Fixture message labels changed from camera to synthetic; all conditions unchanged."
+    },
+    {
+      "origin_path": "m5_rtsp_server/tests/slow_client_session_tests.cpp",
+      "origin_sha256": "17ad993d81b50e272fbe5e7c0e639ef2fe17e20de184c0801679f78808768312",
+      "public_path": "m5_rtsp_server/tests/slow_client_session_tests.cpp",
+      "public_sha256": "17ad993d81b50e272fbe5e7c0e639ef2fe17e20de184c0801679f78808768312",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/include/lp2/bounded_frame_queue.hpp",
+      "origin_sha256": "f0d966822e8bd9202cce944babcb476bbb08c69b89b56320416b50c4b9cb9b5e",
+      "public_path": "m3_frame_pipeline/include/lp2/bounded_frame_queue.hpp",
+      "public_sha256": "f0d966822e8bd9202cce944babcb476bbb08c69b89b56320416b50c4b9cb9b5e",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/include/lp2/frame.hpp",
+      "origin_sha256": "08dea505e7f03c0914d904713e8ac60583807a6a92478f0db524d6553db94b4c",
+      "public_path": "m3_frame_pipeline/include/lp2/frame.hpp",
+      "public_sha256": "08dea505e7f03c0914d904713e8ac60583807a6a92478f0db524d6553db94b4c",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/include/lp2/frame_pool.hpp",
+      "origin_sha256": "ca3c42b9958f0fa5472e1458304bea3b96aac55b91b27b3672408e46d05f838d",
+      "public_path": "m3_frame_pipeline/include/lp2/frame_pool.hpp",
+      "public_sha256": "ca3c42b9958f0fa5472e1458304bea3b96aac55b91b27b3672408e46d05f838d",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/include/lp2/pipeline_stats.hpp",
+      "origin_sha256": "158404b456655c66ae6eef09982d511f203b4e545110de25abe5df082761aac8",
+      "public_path": "m3_frame_pipeline/include/lp2/pipeline_stats.hpp",
+      "public_sha256": "158404b456655c66ae6eef09982d511f203b4e545110de25abe5df082761aac8",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/include/lp2/v4l2_capture.hpp",
+      "origin_sha256": "2853cccc76190b919adafc5f3e6a5fed743d5ab217647af0f43b195d802497c0",
+      "public_path": "m3_frame_pipeline/include/lp2/v4l2_capture.hpp",
+      "public_sha256": "2853cccc76190b919adafc5f3e6a5fed743d5ab217647af0f43b195d802497c0",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/src/bounded_frame_queue.cpp",
+      "origin_sha256": "69255cc886bfc486958b962d4f91a951fc186463c4840a43b4a3ac42fff58e97",
+      "public_path": "m3_frame_pipeline/src/bounded_frame_queue.cpp",
+      "public_sha256": "69255cc886bfc486958b962d4f91a951fc186463c4840a43b4a3ac42fff58e97",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/src/frame_pool.cpp",
+      "origin_sha256": "ee647d09111d82813979655eba579639fe298febbfb332fd799f45aa28f2bad3",
+      "public_path": "m3_frame_pipeline/src/frame_pool.cpp",
+      "public_sha256": "ee647d09111d82813979655eba579639fe298febbfb332fd799f45aa28f2bad3",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m3_frame_pipeline/src/v4l2_capture.cpp",
+      "origin_sha256": "307137e1bd2b24781df6ef1c949c0ab0dae90047102242ed6e4e72b3ee5e7fe3",
+      "public_path": "m3_frame_pipeline/src/v4l2_capture.cpp",
+      "public_sha256": "307137e1bd2b24781df6ef1c949c0ab0dae90047102242ed6e4e72b3ee5e7fe3",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_mjpeg_filesink/include/lp2/file_sink.hpp",
+      "origin_sha256": "27929e8678edb747229dc9c9e237a3e2a0b773659287d72fb2ec68c73aa9b9d0",
+      "public_path": "m4_mjpeg_filesink/include/lp2/file_sink.hpp",
+      "public_sha256": "27929e8678edb747229dc9c9e237a3e2a0b773659287d72fb2ec68c73aa9b9d0",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_mjpeg_filesink/include/lp2/jpeg_validator.hpp",
+      "origin_sha256": "4eef9c6d6c148cbda373ee1c0ff95874486e2c67d53d0ba4b2bc4e48cd945cd8",
+      "public_path": "m4_mjpeg_filesink/include/lp2/jpeg_validator.hpp",
+      "public_sha256": "4eef9c6d6c148cbda373ee1c0ff95874486e2c67d53d0ba4b2bc4e48cd945cd8",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_mjpeg_filesink/include/lp2/media_sink.hpp",
+      "origin_sha256": "18841db6e42771386d45576f4b84b535dfd5f46b6bebc1089ae465e3e9befe6e",
+      "public_path": "m4_mjpeg_filesink/include/lp2/media_sink.hpp",
+      "public_sha256": "18841db6e42771386d45576f4b84b535dfd5f46b6bebc1089ae465e3e9befe6e",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_mjpeg_filesink/src/file_sink.cpp",
+      "origin_sha256": "901e3af681b0a81e72424b7ce3054c23d6255cd2de9a1cd36769d928ca942478",
+      "public_path": "m4_mjpeg_filesink/src/file_sink.cpp",
+      "public_sha256": "901e3af681b0a81e72424b7ce3054c23d6255cd2de9a1cd36769d928ca942478",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_mjpeg_filesink/src/jpeg_validator.cpp",
+      "origin_sha256": "bce78b5eb9091f2f860aae6458f96ab5259496023e57ffe4d492f3480f7725da",
+      "public_path": "m4_mjpeg_filesink/src/jpeg_validator.cpp",
+      "public_sha256": "bce78b5eb9091f2f860aae6458f96ab5259496023e57ffe4d492f3480f7725da",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/CMakeLists.txt",
+      "origin_sha256": "35291e3c2b245d9cae74088b8bb9ec5f69bcf9b7a9b7021d2e2047231c59b744",
+      "public_path": "m4_rtp_jpeg/CMakeLists.txt",
+      "public_sha256": "be7d2da12ec3e86f4ae718b0f0cb7a41d992334abd8f84bef7d60330aa66e363",
+      "status": "adapted-public-test-or-build",
+      "difference": "Public BUILD_TESTING guard and synthetic fixture path."
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/src/rtp_sink.cpp",
+      "origin_sha256": "2abc1cce55d6212a2a26a6cc090500ffc2c2d67d397d68dddc7888eda11529ce",
+      "public_path": "m4_rtp_jpeg/src/rtp_sink.cpp",
+      "public_sha256": "2abc1cce55d6212a2a26a6cc090500ffc2c2d67d397d68dddc7888eda11529ce",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/src/rtp_jpeg.cpp",
+      "origin_sha256": "0d213bfc4385edcdb3ca7cc2a9157c64186f83e66b72ecb4c2fec4e4d736f7ac",
+      "public_path": "m4_rtp_jpeg/src/rtp_jpeg.cpp",
+      "public_sha256": "0d213bfc4385edcdb3ca7cc2a9157c64186f83e66b72ecb4c2fec4e4d736f7ac",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/src/receiver_main.cpp",
+      "origin_sha256": "120491cd35ef6804d56e68e2f14ecd96b0dd8a19c2260112b0fc932b3c02e3d6",
+      "public_path": "m4_rtp_jpeg/src/receiver_main.cpp",
+      "public_sha256": "120491cd35ef6804d56e68e2f14ecd96b0dd8a19c2260112b0fc932b3c02e3d6",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/include/lp2/rtp_sink.hpp",
+      "origin_sha256": "da25d705f14f88ea772a12e45d7bb6336b8852abc4a8d40505a33a0658e09a6a",
+      "public_path": "m4_rtp_jpeg/include/lp2/rtp_sink.hpp",
+      "public_sha256": "da25d705f14f88ea772a12e45d7bb6336b8852abc4a8d40505a33a0658e09a6a",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/include/lp2/rtp_jpeg.hpp",
+      "origin_sha256": "21ee738c7b7d5cc7937d547a00d50a949cf7deb078c3d7fa9fde89ec89c36fd6",
+      "public_path": "m4_rtp_jpeg/include/lp2/rtp_jpeg.hpp",
+      "public_sha256": "21ee738c7b7d5cc7937d547a00d50a949cf7deb078c3d7fa9fde89ec89c36fd6",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/include/lp2/rtp_payload_type.hpp",
+      "origin_sha256": "a2332470b62ca5d783653708f8077909997322a1132a12eeaf848787a80db8db",
+      "public_path": "m4_rtp_jpeg/include/lp2/rtp_payload_type.hpp",
+      "public_sha256": "a2332470b62ca5d783653708f8077909997322a1132a12eeaf848787a80db8db",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg/tests/rtp_jpeg_tests.cpp",
+      "origin_sha256": "c607e9754e685244906d6265137d65b40f26fc7da5413499c12f36892c00eae7",
+      "public_path": "m4_rtp_jpeg/tests/rtp_jpeg_tests.cpp",
+      "public_sha256": "61aa69bef46466338fd41567dbf376c66d50cfab2f57bc9270954196549e1ff8",
+      "status": "adapted-public-test-or-build",
+      "difference": "Fixture message labels changed from camera to synthetic; all conditions unchanged."
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/CMakeLists.txt",
+      "origin_sha256": "c2640ef5259e2d6d806a36f44cd9a1ddafce5aa79d1986ae22bb91b20e8cbf29",
+      "public_path": "m4_rtp_jpeg_check/CMakeLists.txt",
+      "public_sha256": "b6a74127b4cde9eeb1fd487edfd24747ea24f8c7c009524d0e1a258b67da7ca0",
+      "status": "adapted-public-test-or-build",
+      "difference": "Public BUILD_TESTING guard and synthetic fixture path."
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/src/main.cpp",
+      "origin_sha256": "c6fc750a4d58bd94104c186a9b310bd5b83c011bf2a486ea2dd5a0e52eb30294",
+      "public_path": "m4_rtp_jpeg_check/src/main.cpp",
+      "public_sha256": "c6fc750a4d58bd94104c186a9b310bd5b83c011bf2a486ea2dd5a0e52eb30294",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/src/jpeg_rtp_inspector.cpp",
+      "origin_sha256": "13eff5ffb9de9ed52c5c1e7a2b1b39316d6409e765cdcb65298c08223f9951c8",
+      "public_path": "m4_rtp_jpeg_check/src/jpeg_rtp_inspector.cpp",
+      "public_sha256": "13eff5ffb9de9ed52c5c1e7a2b1b39316d6409e765cdcb65298c08223f9951c8",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/src/rfc2435_huffman.cpp",
+      "origin_sha256": "eab437a66796d2f170024ec31cf4388da9cec3dcad57319ca55e2779bf7d4c00",
+      "public_path": "m4_rtp_jpeg_check/src/rfc2435_huffman.cpp",
+      "public_sha256": "d890612de489ce87c7c620492b5123c9fec00d7379aa240c5bed7c5a04ea054b",
+      "status": "replaced-public-implementation",
+      "difference": "Public-only new canonical-codebook matcher and bounded DHT serializer; old implementation not retained. Parameters separately transcribed from RFC 2435 Appendix B. ABI/API and wire behavior preserved; fresh validation pending."
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/include/lp2/jpeg_rtp_inspector.hpp",
+      "origin_sha256": "284a56d397bbb5a6c0397094ea3095f8a42dee7f86edbf19dd4933f62800abd5",
+      "public_path": "m4_rtp_jpeg_check/include/lp2/jpeg_rtp_inspector.hpp",
+      "public_sha256": "284a56d397bbb5a6c0397094ea3095f8a42dee7f86edbf19dd4933f62800abd5",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/include/lp2/rfc2435_huffman.hpp",
+      "origin_sha256": "1cd74346bcd0f2cbd90dd7be0d37317faf20771cba399e97b7e3df7ad62225bf",
+      "public_path": "m4_rtp_jpeg_check/include/lp2/rfc2435_huffman.hpp",
+      "public_sha256": "33486edb6296fb718fe08c9f3b5b22f958b0dbd7c94331891fa04f2e5700c599",
+      "status": "adapted-contract-documentation",
+      "difference": "Document pointer spans and rejection contract; function signatures unchanged."
+    },
+    {
+      "origin_path": "m4_rtp_jpeg_check/tests/jpeg_rtp_tests.cpp",
+      "origin_sha256": "9d54397e8e4adc7ce735b0459ebcac9f4d35849beb0b7b2c6e544027a4ba718c",
+      "public_path": "m4_rtp_jpeg_check/tests/jpeg_rtp_tests.cpp",
+      "public_sha256": "ab98032b26b216b42a5536ef46ea605e0daf98b2e1a52c599387657267999a40",
+      "status": "adapted-public-regression-tests",
+      "difference": "Retain every earlier assertion; independently walk synthetic JPEG DHT, verify exact output, exhaustive single-byte mutations, malformed/null inputs and append behavior."
+    },
+    {
+      "origin_path": "cmake/toolchains/imx6ull-poky.cmake",
+      "origin_sha256": "07ba12ff17b6f62da25106b908c6f425c511ae73146e66bdc33907bf73842360",
+      "public_path": "cmake/toolchains/imx6ull-poky.cmake",
+      "public_sha256": "07ba12ff17b6f62da25106b908c6f425c511ae73146e66bdc33907bf73842360",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/service/lp2-media",
+      "origin_sha256": "46ee08dee67e59ab3bbfbe6b8b83ef42bd7305ce7efc21e2d7d6d576f75116f2",
+      "public_path": "scripts/service/lp2-media",
+      "public_sha256": "46ee08dee67e59ab3bbfbe6b8b83ef42bd7305ce7efc21e2d7d6d576f75116f2",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/service/lp2-watchdog",
+      "origin_sha256": "ff8092eda6865a2ba675c0bca48af600f1d8fd6a5b17dc4b67097e53b2c8e84d",
+      "public_path": "scripts/service/lp2-watchdog",
+      "public_sha256": "ff8092eda6865a2ba675c0bca48af600f1d8fd6a5b17dc4b67097e53b2c8e84d",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/service/manage_sysv.sh",
+      "origin_sha256": "bc100073685fb87771caff7ee3fd7ab3aa610d3d54b76fee600106604ab61e97",
+      "public_path": "scripts/service/manage_sysv.sh",
+      "public_sha256": "bc100073685fb87771caff7ee3fd7ab3aa610d3d54b76fee600106604ab61e97",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/service/manage_watchdog.sh",
+      "origin_sha256": "d686b8664b8291a68cb48dde232379f0f8a5accf2e4fe5ddff7e6eaa74a2a161",
+      "public_path": "scripts/service/manage_watchdog.sh",
+      "public_sha256": "d686b8664b8291a68cb48dde232379f0f8a5accf2e4fe5ddff7e6eaa74a2a161",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/service/tests/test_sysv.py",
+      "origin_sha256": "9635e519bed7ef136e2ef3306cbb86696a963dfc24a1165881917b9ccca39013",
+      "public_path": "scripts/service/tests/test_sysv.py",
+      "public_sha256": "64d829f0c961c84f08b849684b9298121678d34137b2d076fba403fa8c0e8d33",
+      "status": "adapted-public-test-or-build",
+      "difference": "Read runtime arguments from public config instead of private Release directory."
+    },
+    {
+      "origin_path": "scripts/service/tests/test_watchdog.py",
+      "origin_sha256": "ed204fefb88de1c97b24c1de3dcd5e1ff55f14b4dc3beb8e95c75f0ea378e853",
+      "public_path": "scripts/service/tests/test_watchdog.py",
+      "public_sha256": "ed204fefb88de1c97b24c1de3dcd5e1ff55f14b4dc3beb8e95c75f0ea378e853",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/release/build_release.sh",
+      "origin_sha256": "60229206fdb34f01d43930f550ef72695dd97fbe0e430f971d921cfac461d7f5",
+      "public_path": "scripts/release/build_release.sh",
+      "public_sha256": "60229206fdb34f01d43930f550ef72695dd97fbe0e430f971d921cfac461d7f5",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/release/board_release.sh",
+      "origin_sha256": "fa9b9c2869115c50ec420f9d69bf0e081a1d0560e8e3f5439971097d79f0ff00",
+      "public_path": "scripts/release/board_release.sh",
+      "public_sha256": "fa9b9c2869115c50ec420f9d69bf0e081a1d0560e8e3f5439971097d79f0ff00",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/release/release_package.py",
+      "origin_sha256": "6281ee4ce8eae97b91b16c8d83c1e999ea2fe29a5b57c23661859c8d1891f1a2",
+      "public_path": "scripts/release/release_package.py",
+      "public_sha256": "6281ee4ce8eae97b91b16c8d83c1e999ea2fe29a5b57c23661859c8d1891f1a2",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/release/transfer_release.py",
+      "origin_sha256": "fdd3cff9c0fbf6d4a3734fcc75bb58bc1b49ab2493c892800b33f8ca2ab63b80",
+      "public_path": "scripts/release/transfer_release.py",
+      "public_sha256": "fdd3cff9c0fbf6d4a3734fcc75bb58bc1b49ab2493c892800b33f8ca2ab63b80",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/release/tests/test_release.py",
+      "origin_sha256": "dca1e76b16721d58475483ba28df71049c61b283eab8d87fd00749afc3d642bb",
+      "public_path": "scripts/release/tests/test_release.py",
+      "public_sha256": "9929765be0416230e829200e6c630ef4ab2c8f907e0fa36b3892bfb0cc3f2400",
+      "status": "adapted-public-test-or-build",
+      "difference": "Generated metadata-only ARM ELF replaces private historical binary; digest expectation names the deterministic fixture; safety assertions preserved."
+    },
+    {
+      "origin_path": "scripts/stability/monitor_resources.py",
+      "origin_sha256": "b124f6d05c4cc8614b268ac15d760f30d134156c89fee959263a1c8e5199290f",
+      "public_path": "scripts/stability/monitor_resources.py",
+      "public_sha256": "b124f6d05c4cc8614b268ac15d760f30d134156c89fee959263a1c8e5199290f",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/stability/monitor_rtsp_resources.sh",
+      "origin_sha256": "7eafc4ffd20ca34a64d8ca0e8cadb2b9573b66faf953edd6ec3e3dee55eadbcd",
+      "public_path": "scripts/stability/monitor_rtsp_resources.sh",
+      "public_sha256": "7eafc4ffd20ca34a64d8ca0e8cadb2b9573b66faf953edd6ec3e3dee55eadbcd",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/stability/board_resource_probe.sh",
+      "origin_sha256": "7c6d1f757759096cc1dce3ded7e7ccb89eed556a08d16a5b12f702ef2ab27ce1",
+      "public_path": "scripts/stability/board_resource_probe.sh",
+      "public_sha256": "7c6d1f757759096cc1dce3ded7e7ccb89eed556a08d16a5b12f702ef2ab27ce1",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/stability/mark_phase.sh",
+      "origin_sha256": "ba43ad21dad81c9c6dd0c5d04879626d82a95bdd7cf87c8e4ef4f32fe81f0bc7",
+      "public_path": "scripts/stability/mark_phase.sh",
+      "public_sha256": "ba43ad21dad81c9c6dd0c5d04879626d82a95bdd7cf87c8e4ef4f32fe81f0bc7",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/stability/analyze_stability.py",
+      "origin_sha256": "6a8c4d27f3b14958e59329fa4c8870d8fd78a74970599efbafc256683a66e961",
+      "public_path": "scripts/stability/analyze_stability.py",
+      "public_sha256": "6a8c4d27f3b14958e59329fa4c8870d8fd78a74970599efbafc256683a66e961",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/stability/tests/test_stability.py",
+      "origin_sha256": "32d55a1f516548e526ae4343c8af97b3e309ebf63ff8ce6ad80ea865baea2df0",
+      "public_path": "scripts/stability/tests/test_stability.py",
+      "public_sha256": "32d55a1f516548e526ae4343c8af97b3e309ebf63ff8ce6ad80ea865baea2df0",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/acceptance/m9_dual_client_gate.py",
+      "origin_sha256": "11f41db0fb256766c09281b9730df1e2ee79760b541f334a5f584b1f2a184512",
+      "public_path": "scripts/acceptance/m9_dual_client_gate.py",
+      "public_sha256": "11f41db0fb256766c09281b9730df1e2ee79760b541f334a5f584b1f2a184512",
+      "status": "byte-identical",
+      "difference": "None"
+    },
+    {
+      "origin_path": "scripts/acceptance/tests/test_m9_dual_client_gate.py",
+      "origin_sha256": "62d2159670c1004d7399d5e9e9c926c24f5b35d795a795f8ab6fe94dbc822b66",
+      "public_path": "scripts/acceptance/tests/test_m9_dual_client_gate.py",
+      "public_sha256": "7840bd4b936d7f7454210281a09e5a963c16bf8937035f0635585e92303e5006",
+      "status": "adapted-public-test-or-build",
+      "difference": "Synthetic Boot ID/PID/start ticks replace captured-looking identity values; consistency assertions preserved."
+    },
+    {
+      "origin_path": "releases/m7.2-20261013-r1/run-args.txt",
+      "origin_sha256": "68af2490b9968ce8344eef9a4deeecc10d93e870b298010a34d6de73c02aee51",
+      "public_path": "config/run-args.txt",
+      "public_sha256": "68af2490b9968ce8344eef9a4deeecc10d93e870b298010a34d6de73c02aee51",
+      "status": "byte-identical-relocated",
+      "difference": "Public test/configuration copy; no private Release directory required."
+    }
+  ],
+  "new_public_sources": [
+    {
+      "public_path": "m4_rtp_jpeg_check/src/jpeg_standard_codebooks.hpp",
+      "public_sha256": "4a31995b2b624479f3c02f73761f20bc43308f2037572d9d5389e6e21ee0ed3e",
+      "source": "RFC 2435 Appendix B parameter listing; grouped by code length, not reference-program code",
+      "source_url": "https://www.rfc-editor.org/rfc/rfc2435.html",
+      "license_review": "Historical RFC 2435 permission retained in LICENSES/RFC2435-notice.txt; RFC-derived parameters excluded from MIT relicensing; see docs/rfc2435-license-review.md"
+    }
+  ]
+}
+
