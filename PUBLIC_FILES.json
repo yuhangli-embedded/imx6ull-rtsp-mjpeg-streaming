@@ -252,7 +252,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ed00808b9e8bca589fcc35f591d0951e4fb4568aa4ec1af8c7d932fb977b350e"
+      "sha256": "d2c27a30df1102afc70d11e20b4317ff0760150820e8ece8418f468e82f56c55"
     },
     {
       "path": "scripts/acceptance/m9_dual_client_gate.py",
