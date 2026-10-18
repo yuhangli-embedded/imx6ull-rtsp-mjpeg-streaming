@@ -44,9 +44,8 @@ flowchart LR
     S["SysVinit / Watchdog"] -. 进程生命周期 .-> R
 ```
 
-FramePool 在 JPEG 校验前提供应用层存储。图中虚线表示资源或控制关系，不是逐帧处理阶段。
-所有使用者释放引用后，Frame 才能回池，异步发送线程不持有 V4L2 mmap 指针。
-详见[架构与所有权](docs/architecture.md)。
+FramePool 在 JPEG 校验前提供应用层存储，所有使用者释放引用后，Frame 才能回池。
+图中实线表示媒体数据流，虚线表示缓冲归还与控制关系。帧所有权设计见[架构说明](docs/architecture.md)。
 
 ## 核心技术实现
 
@@ -62,8 +61,6 @@ FramePool 在 JPEG 校验前提供应用层存储。图中虚线表示资源或�
   有限重试及单帧发送预算。提交内核成功不等于网络送达。
 - 运维：版本化发布目录、SHA-256 校验、受保护的切换与回滚；
   SysVinit 管理启停，Watchdog 按限频策略恢复异常退出，管理员 stop 后不自动拉起。
-
-本项目使用 mmap 到应用层的复制，不是零拷贝或驱动开发项目。发送预算不等于端到端延迟上限。
 
 ## 编译与运行
 
@@ -89,7 +86,7 @@ bash tools/validate_poky.sh
 ```
 
 不要使用 Ubuntu 通用 ARM GCC 替代原 SDK，以免引入高于板端 glibc 2.23 的依赖。
-详细依赖、目标产物及组合测试入口见[构建说明](docs/build.md)和[测试说明](docs/testing.md)。
+依赖和构建产物见[构建说明](docs/build.md)。
 
 板端服务就绪后，Ubuntu 客户端可使用以下命令播放；IP 为实验环境示例：
 
@@ -99,13 +96,12 @@ ffplay -rtsp_transport udp -fflags nobuffer -flags low_delay \
   rtsp://192.168.50.2:8554/live
 ```
 
-正式部署版本与公开源码适配版本分别维护，不能仅凭构建成功直接覆盖正在运行的服务。
-安装、启停和回滚见[部署说明](docs/deployment.md)。RTSP 未提供认证，只用于可信实验网络，
-不得直接暴露到公网。
+板端安装、服务启停和版本回滚见[部署说明](docs/deployment.md)。
+RTSP 未提供认证，仅用于可信实验网络，不应直接暴露到公网。
 
 ## 测试情况
 
-| 项目 | 已记录结果 |
+| 项目 | 结果 |
 | --- | --- |
 | 原生构建与离线测试 | 独立副本构建通过，6 项 CTest 与 156 项 Python 测试通过 |
 | 交叉编译 | Poky ARM 编译链接、静态 SDK ABI 检查及 9 项 ABI 检查器测试通过 |
@@ -114,9 +110,6 @@ ffplay -rtsp_transport udp -fflags nobuffer -flags low_delay \
 | 双客户端接收 | 一个客户端退出后，另一个继续解码 30.002 秒，新增 855 帧 |
 | 稳定性与服务管理 | 已完成 30 分钟运行、重连、开机启动和异常退出恢复验证 |
 
-构建及实机结果来自已有记录，本次文档整理未重新运行测试。
-双客户端媒体接收测试不代表客户端窗口退出问题已解决；端到端延迟研究也未证明显著改善。
-完整结果、证据范围及待确认现象见[验证记录](docs/validation.md)、
-[技术边界](docs/limitations.md)和[延迟研究](docs/latency-research.md)。
+测试方法、完整结果与已知问题见[验证记录](docs/validation.md)。
 
 项目自有代码采用 [MIT LICENSE](LICENSE)，RFC 派生参数保留[第三方授权声明](THIRD_PARTY_NOTICES.md)。
