@@ -1,74 +1,55 @@
-# Tests and reproducibility
+# 测试说明
 
-## Single Ubuntu offline command
+## 原生离线验证
 
-From this repository root, with native g++, CMake, Python3, FFmpeg and GNU/POSIX tools:
+Ubuntu 仓库根目录，未激活 Poky SDK 的终端：
 
 ```bash
 bash tools/validate_ubuntu.sh
 ```
 
-The gate exports only PUBLIC_FILES.json entries into a unique local /tmp clean
-copy (not an HGFS build cache), leaves evidence there, and performs:
+脚本导出白名单文件到唯一的本地临时目录，执行清单/来源映射/相对链接/Python 语法检查、
+原生 CMake 构建、6 项 CTest、FFmpeg JPEG 实际解码、Shell 语法及 Python 离线回归。
+需要 g++、CMake、Python、FFmpeg 和 GNU/POSIX 工具；脚本不自动安装依赖，也不跳过不支持的测试。
+它不连接开发板、启动摄像头、安装服务或修改网络；临时证据保留。
 
-1. Hash/source-map, quoted-header, relative-link, Python syntax and upload-type audit.
-2. Native CMake build and all six CTests, without camera or board access.
-3. Actual FFmpeg JPEG decoding with errors treated as failures.
-4. Shell syntax and all release/service/watchdog/stability/dual-client offline suites.
+6 项 CTest 分别覆盖：
 
-It does not silently skip unavailable POSIX features, install dependencies, SSH,
-run the hardware server, change network rules or alter any host service. Do not
-run it in an SDK-contaminated shell. Keep the reported temporary directory as
-evidence; removal is manual and scoped to that generated directory.
+1. RTSP 请求响应、SDP 和 transport 解析。
+2. PT=96/PT=26、RTP 头和 marker。
+3. 并发引用归还、FramePool 计数及队列淘汰。
+4. 慢/快客户端隔离，使用无网络的 Sink 测试替身。
+5. RTP/JPEG 扫描数据及量化表保持，分片、乱序、重复、缺片超时和边界。
+6. JPEG 标记、采样及 Huffman 校验，包括独立 DHT 参照和异常输入。
 
-## Six CTests
+协议自测不代替解码；完整入口另外执行实际 JPEG 解码。
+固定样本的来源见[样本说明](../tests/fixtures/README.md)。
 
-- RTSP request/response, SDP, transport parsing.
-- PT96/PT26 regression and marker/header checks using synthetic JPEG.
-- Concurrent fixed-pool reference accounting and per-client drop-oldest.
-- Slow/fast client sender isolation with a socket-free sink double.
-- RTP/JPEG scan/DQT preservation, fragmentation, reverse order, duplicates,
-  loss timeout, malformed headers, offset/capacity/boundary checks.
-- JPEG compatibility parsing, table/sampling validation and malformed marker rejection.
+## 运维与跨平台测试
 
-No GUI test or two real network clients is implied by these unit tests. Decoder
-validity is checked independently, not just by the sender/receiver sharing a parser.
+发布测试使用源码生成的 metadata-only ELF，无机器代码、无可执行段，永不作为 Release 运行。
+校验、活跃进程拦截、原子重命名失败保护、篡改检查和回滚断言仍保留。
+服务测试使用仓库内 run-args，不依赖私有发布目录。
 
-## Release/service fixture adaptation
+Windows 可执行 `tools/run_portable_checks.py` 和
+`tools/run_offline_regressions.py --windows-subset` 的显式子集。
+它们不等价于 Linux procfs、信号及 POSIX 安装验证。
+ash 测试夹具仍使用支持 -T 的外部 GNU mv，不代表纯 BusyBox applet 全部兼容。
 
-Release tests generate a deterministic **metadata-only ELF** in unique temporary
-fixtures. It has ARM ELF32/hard-float metadata and dependency strings but no machine
-code, no executable segment and entry=0. It is never run or distributed as a
-Release. SHA, interpreter/dependency assertions remain, as do live-process
-blocking, wrong approval, failed rename protection, tamper and rollback assertions.
-The old artifact-identity test now identifies this explicit fixture rather than
-requiring a historical private ARM binary. This is not an SDK/ABI execution test.
+## ARM 与实机测试
 
-Service metadata tests read [public run arguments](../config/run-args.txt), not
-a private Release directory. Actual service/helper/installer logic remains intact.
-GNU external mv -T is required for the existing ash fixture profile; that does
-not prove arbitrary board BusyBox applet compatibility.
+```bash
+bash tools/validate_poky.sh
+bash tools/validate_huffman_revision.sh
+```
 
-## Windows observations and limits
+前者构建并静态检查 ARM，后者组合原生离线、ABI 检查器和 Poky 验证。
+不在主机运行 ARM 测试，也不部署。编译环境见[构建说明](build.md)。
 
-`tools/run_portable_checks.py` compiles six checks with a host C++ compiler.
-`tools/run_offline_regressions.py --windows-subset` selects explicitly named logic
-suites and reports native install/diagnostic suites NOT RUN. Windows tests emulate
-delivery of a child SIGINT where POSIX signals are unavailable; they are not Linux
-signal/procfs/rename Gates. No assertion is dropped to obtain these subsets.
+双客户端实机脚本 `scripts/acceptance/m9_dual_client_gate.py` 是明确启用的测试，会使用 SSH，
+不会被离线入口调用。URL/host 是脚本常量，不提供虚构的 --host/--url 参数；
+运行前检查实验地址、两个空闲会话名额和非交互 SSH。
+必须有客户端退出后另一路继续解码的帧数证据，不能只检查进程存活；
+SSH/证据不足应区分为无法判断，而不是媒体独立性失败。
 
-The included fixture was also decoded with the Windows platform JPEG decoder.
-Ubuntu CMake/CTest, full POSIX regressions and the Poky build have separate
-PASS results, including the new Huffman revision as reported by the maintainer;
-see [validation](validation.md) for the supplied ARM hash and evidence boundary.
-Local _validation output is ignored and
-excluded from PUBLIC_FILES.json; never force-add generated executables or logs.
-
-## Hardware tests
-
-The M9.3 client runner is opt-in and **does use SSH**. It is never invoked by the
-offline gate. Its lab URL and host are fixed examples in the copied script; no
---host/--url option is claimed to exist. Review these constants before an explicitly
-authorized lab run. It requires two free session slots and noninteractive SSH.
-PASS needs decoded frames after A exits, not merely a live B process. Client
-exit reasons and SSH failure are distinguished; an incomplete probe is INCONCLUSIVE.
+已有结果、未闭合证据和版本区别见[验证记录](validation.md)。

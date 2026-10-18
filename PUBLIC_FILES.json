@@ -8,7 +8,7 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "41946e08987a0d2bed9007b019929b5e65caea6680b75f8d8e9b38a453924c12"
+      "sha256": "d5ee7188aa8089e3e975fa4bb5295bc5a5ea12ff9512110a06e60cd1544d7f43"
     },
     {
       "path": "cmake/toolchains/imx6ull-poky.cmake",
@@ -24,51 +24,39 @@
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "b96ba5ab09cc652df4138722290aed81dc5e25c27a064d6015601846167a88f2"
+      "sha256": "5ad295571643718b062d483a07635dd566085478b20f3d4be1733c625b42fec3"
     },
     {
       "path": "docs/build.md",
-      "sha256": "3374d07fb6a472bfc5de00643e0d8633a1e7940d03abd37df5eb6a3322dc97ba"
+      "sha256": "5fcb35fa9cd26dfbb64fc7220c7613e74b8351cb6db2161d0b29fad28c024cf9"
     },
     {
       "path": "docs/deployment.md",
-      "sha256": "c000dce090fb6d06e419464f3212d1843ba97a36e36315deba7488b21996455d"
-    },
-    {
-      "path": "docs/g3-2-review.md",
-      "sha256": "e2ee886b0757ff07a6b1893142be387d23e3655f3418405bba1218c6ce317966"
+      "sha256": "a46ce387b2ab011c433f44b3073dc751073d67e66ea6f1254a7f7639ed714c88"
     },
     {
       "path": "docs/huffman-replacement.md",
-      "sha256": "0afbe41d58b74f10385ece5edd7ac3ac2ab2c1a192e39820b3c437f539183855"
+      "sha256": "e30494597c00894f5d467c04fca41e7efc2b871cd22e7c3a1223e6efd0079d20"
     },
     {
       "path": "docs/latency-research.md",
-      "sha256": "980c0d066981a7c0d294ef2eec083686fa62c7b04480abe7fa90753261584248"
+      "sha256": "529eb6ebea9f7833162fba5d0164c2ffbe9021663eb2c33efacd7cd939b7d72c"
     },
     {
       "path": "docs/limitations.md",
-      "sha256": "86360b9ce2cfd814217c1ed4c8c506285350c856fee24dbe7372ee20233bfe06"
-    },
-    {
-      "path": "docs/provenance.md",
-      "sha256": "ca5fad3bf8ac1c3cf0f161cf909402634fba3e3b1cc937e91c512a0bcd7d0fb8"
-    },
-    {
-      "path": "docs/publication-checklist.md",
-      "sha256": "6e05b25cf347f3c513919af37b4779860c1cb62dc0ccda437657001aa571ef13"
+      "sha256": "a59dc4a6e5dffdee0e2c68905cf3747730074c5d660790f797be5368117b1a62"
     },
     {
       "path": "docs/rfc2435-license-review.md",
-      "sha256": "e1000d18d4faa6a459fb56f17e5e944f889c2a67215374c6a5e90928b07e6a01"
+      "sha256": "ac7aa545e1f73ce34682175aa64e3748c4f3af20e2ca6660c30127784c09931f"
     },
     {
       "path": "docs/testing.md",
-      "sha256": "8b292eb7e3f490ecce4e0a26d7824f34be6a91bd1d2859423bf097a44591a1cb"
+      "sha256": "6e71df81fc86b222a3fa0ceb557192b84c53558a7536b3444954dcf41d5d5642"
     },
     {
       "path": "docs/validation.md",
-      "sha256": "6c3de390117bf4a874fc9e34ce74a160ac1128baae96d781119b8e2ede43fece"
+      "sha256": "73e6b6fe198222d572cff11403ff63e582b39b164868e6d6f2fba65c9a58dab4"
     },
     {
       "path": "LICENSE",
@@ -252,7 +240,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "d2c27a30df1102afc70d11e20b4317ff0760150820e8ece8418f468e82f56c55"
+      "sha256": "c02e35d731c48129c7e0e7b5f5de320485d979c179dc8be60d1415bfd494ce67"
     },
     {
       "path": "scripts/acceptance/m9_dual_client_gate.py",

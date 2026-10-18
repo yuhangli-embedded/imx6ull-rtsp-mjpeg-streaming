@@ -1,37 +1,23 @@
-# Latency research: measurements and boundaries
+# 延迟研究与测量边界
 
-The independent M8 experiments are documented here rather than bundling duplicate
-overlays whose test drivers require private binaries. They did not replace the
-M7.2/M7.4 deployed baseline.
+独立实验没有替换正式部署版本，也未证明显著端到端延迟改善。
 
-## Observations, not attribution
+## 已有观测
 
-- Visible scene/screen timer trial: approximately350-400ms, preliminary only.
-- User-reported experimental averages: capture queue0.100ms, sender queue0.071ms,
-  complete RTP sink call7.252ms;469/469 frames submitted. The complete raw bundle
-  for that run is not supplied. These values do not identify the whole-path bottleneck.
-- Latest-frame selection triggered only occasionally and did not show a meaningful
-  improvement. No success claim is based on subjective smoothness or a new flag.
+- 场景/屏幕计时器试测约 350～400 ms，仅是初步可见延迟，不是正式性能成果或统计分布。
+- 一次实验记录平均采集队列等待 0.100 ms、发送队列等待 0.071 ms、
+  RTP Sink 调用 7.252 ms，469/469 帧提交。完整原始包未公开，不据此分摊整个链路延迟。
+- 最新帧策略仅少量触发，未显示明确改善。
+- 独立采集诊断 300 帧、29.143 fps，REQBUFS 请求/返回 4/4；
+  驱动时间戳 121 帧满足可比较检查，179 帧不满足（未来 136、倒退 43）。
+  条件样本平均差值 83.088 ms 不是已证实的曝光/编码到 DQBUF 时间，也不是可直接消除的缓冲。
 
-The camera-only run had300 frames,29.143fps, requested/returned mmap buffers4/4.
-Of300 driver timestamps,121 met the diagnostic comparability checks and179 were
-rejected as future136/backward43. The conditional121-sample average83.088ms is
-not a known sensor/encoding-to-dequeue delay or83ms of removable buffering.
-The underlying raw dataset is retained privately, not rewritten or zero-filled.
+## 方法限制
 
-## Measurement boundaries
+板端与 Ubuntu 时钟不能直接相减；驱动声明的时钟或 SOE 语义也不能单独证明曝光完成时刻。
+4 个 mmap buffer 不等于固定增加 4 帧延迟。100 ms 发送预算不是端到端上限，
+不同运行或不同帧的平均值不能相减来推导解码耗时。
 
-Do not subtract clocks from the board and Ubuntu without synchronization and
-semantics. Even a driver-declared monotonic/SOE timestamp need not reliably mark
-physical exposure/encoding completion on the old UVC stack. Four mapped buffers
-do not imply four queued completed frames. Frame send budget100ms is not an
-end-to-end bound. Averages from different runs/frames cannot be subtracted to
-derive decoder latency.
-
-A non-invasive method is a single recording containing both a real scene change
-and the displayed response, with a verified timebase, matched events, original
-data, sample count/median/tails and uncertainty. That formal quantitative result
-remains optional/pending; it is not supplied by this source export.
-
-The engineering conclusion was to keep the ownership/queue baseline unchanged
-rather than invent a queue optimization unsupported by the data.
+建议同一段录像包含真实场景变化和播放响应，保留原始视频，逐帧匹配事件，
+报告采样数量、中位数、较慢样本和时间基准误差。完整定量结果尚未形成。
+现有证据不足以将持续延迟归因于应用队列，故未以猜测改动正式缓冲策略。

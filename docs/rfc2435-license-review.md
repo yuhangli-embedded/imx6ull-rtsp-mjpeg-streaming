@@ -64,5 +64,5 @@ The maintainer reports the replacement passed native162 tests, ABI-checker9
 tests and Poky/static SDK ABI checks. No build was repeated in this review.
 The new ARM SHA-256 supplied by the maintainer is
 `8b631abafc478e21e23e755d2676f5061bde8292df16c5bc552c4e27e3e84f46`.
-It is recorded in the checklist without borrowing M7.2's value. The ARM binary
+It is recorded in [validation](validation.md) without borrowing M7.2's value. The ARM binary
 and raw hash evidence are not bundled or independently inspected in this review.

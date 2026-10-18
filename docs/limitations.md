@@ -1,33 +1,17 @@
-# Known limitations and open items
+# 技术边界与待确认现象
 
-- Overall historical acceptance is CONDITIONAL PASS. M9.3 media independence is
-  PASS, but its full automatic Gate is INCONCLUSIVE. Do not hide missing evidence.
-- Two ffplay windows were observed to exit together when one was closed. Root
-  cause remains OPEN; server process identity was stable. Headless FFmpeg tests
-  do not prove a GUI/client issue was fixed or even localize its cause.
-- Preliminary visible delay was approximately350-400ms. M8 did not demonstrate
-  a significant end-to-end reduction. No hard latency bound or rigorous final
-  scene-to-screen distribution is claimed.
-- UVC input may contain malformed JPEG without error flags; strict filtering
-  rejects it. Driver sequence gaps are not all proven application losses.
-- UDP kernel submission is not delivery. Loss/reordering may damage a whole
-  frame; severe impairment can leave the old player delayed until reconnect.
-- Only up to two sessions; baseline single-scan4:2:0/standard-Huffman/no-restart
-  JPEG subset. Not a complete RTSP standard implementation or general transcoder.
-- No RTCP, retransmission/NACK/FEC, TCP interleaving, authentication, H.264/audio,
-  Internet-facing hardening, systemd integration or kernel/driver development.
-- Capture copies mmap data; RTP parsing uses vectors. Not zero-copy or globally
-  allocation-free; no promise of exhaustion=0 under every possible workload.
-- Watchdog checks process exit, not frozen video/RTSP/decoder health; it is not
-  itself automatically respawned. Reset/manual-start lock contention is known.
-- Reboot autostart was confirmed, not every abrupt-power-loss transaction or
-  shutdown/runlevel/K-link ordering scenario. Unknown residual locks are not force-removed.
-- Deployment requires root and specific tools including mv -T; an ash test with
-  external GNU mv is not proof of pure BusyBox compatibility.
-- Native tests and Poky static ABI for the replacement passed per the maintainer;
-  its supplied ARM SHA-256 is recorded in validation, not independently recomputed
-  in this review. Project code is MIT; RFC-derived
-  parameter material retains separately documented historical terms.
+- 支持最多两个 RTSP/UDP 客户端，JPEG 限于 Baseline、单扫描、4:2:0、
+  标准 Huffman、无 restart 的子集，不是完整 RTSP 实现或通用转码器。
+- 无认证，不适合公网；未实现 RTCP、重传/NACK/FEC、TCP interleaved、H.264 和音频。
+- UVC 可返回未标记错误的不完整 JPEG，当前严格丢弃。驱动 sequence gap 不全是已证实的应用丢帧。
+- sendto 成功仅代表提交内核。严重丢包或乱序后，原 ffplay 会话可能延迟较大；
+  已观察到重连恢复，未实现原连接快速无缝恢复。
+- 两个 ffplay 窗口关闭联动尚未定位；无图形客户端独立性结果不能替代该问题的复核。
+- mmap 数据复制到应用层 Frame；RTP 使用动态容器，不是零拷贝或全链路无分配。
+  不保证任意负载下都不会耗尽资源。
+- Watchdog 只监测进程退出，不检测画面、RTSP 或解码健康，也不自行重启 Watchdog。
+  reset 与手动 start 的锁竞争、任意断电事务及所有关机顺序未全面验证。
+- 发布工具依赖特定命令能力（含 mv -T）；支持 ash 不等于纯 BusyBox 所有 applet 均兼容。
+- 端到端延迟没有严格的最终分布或硬实时上限，见[延迟研究](latency-research.md)。
 
-These limits are part of the public presentation, not reasons to modify the
-frozen implementation or relabel an experiment as successful.
+正式与公开版本、测试通过范围及未闭合证据见[验证记录](validation.md)。

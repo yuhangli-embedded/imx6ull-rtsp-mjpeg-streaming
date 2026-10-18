@@ -1,92 +1,57 @@
-# Validation results
+# 验证记录与版本区别
 
-Historical final project acceptance: **CONDITIONAL PASS**.
+以下为历史实测和维护者提供的构建记录，本次文档整理未重新构建或进行实机测试。
+公开仓库不包含私有原始日志和 ARM 发布产物。
 
-## Current Huffman replacement revision
+## 构建与离线测试
 
-For the replacement, the maintainer now reports Ubuntu native162/162 PASS,
-ABI-checker9/9 PASS, Poky ARM compile/link PASS and static SDK ABI PASS.
-These results were not rerun during the copyright review. Earlier current-source
-Windows portable6/6 and offline subsets128/128 are supplemental, not native tests.
-
-The maintainer supplied the replacement ARM SHA-256:
-
-```text
-8b631abafc478e21e23e755d2676f5061bde8292df16c5bc552c4e27e3e84f46
-```
-
-It differs from the historical M7.2 value below. The hash is a supplied build
-result, not recomputed in this review: no corresponding ARM executable, abi.json
-or raw SHA256SUMS is bundled here. No new hardware acceptance is inferred.
-See [replacement](huffman-replacement.md) and [checklist](publication-checklist.md).
-
-## Pre-replacement build and offline validation
-
-The following Ubuntu results were supplied by the maintainer and were not
-repeated during the final documentation review:
-
-| Check | Result |
+| 检查 | 已记录结果 |
 | --- | --- |
-| Independent clean-copy native CMake build | PASS; no private parent dependency |
-| CTest | 6/6 PASS |
-| Service offline tests | 64/64 PASS |
-| Watchdog offline tests | 21/21 PASS |
-| Release offline tests | 27/27 PASS |
-| Stability offline tests | 24/24 PASS |
-| Dual-client offline tests | 20/20 PASS |
-| Total native tests | 162/162 PASS: six CTests plus 156 Python tests |
-| Specified Poky ARM cross-build | PASS |
-| Static SDK ABI gate | PASS; not a new board runtime test |
+| Ubuntu 独立副本构建 | 通过，不依赖正式工程父目录 |
+| CTest | 6/6 |
+| Python 离线回归 | 服务 64/64、Watchdog 21/21、发布 27/27、稳定性 24/24、双客户端 20/20 |
+| 原生合计 | 162/162，包含 6 项 CTest 和 156 项 Python 测试 |
+| ABI 检查器 | 9/9，单独计数 |
+| Poky ARM 编译链接与静态 SDK ABI | 通过 |
 
-The reported public ARM program hash exactly matches the frozen M7.2 binary:
+Huffman 公开适配版本的原生、ABI 和 Poky 结果均由维护者提供。此前 Windows 的
+6 项便携 C++、128 项可运行子集只作为补充，不冒充原生结果。
+静态 ABI 检查不等于再次验证板端全部已安装库或运行行为。
 
-```text
-Release: m7.2-20261013-r1
-SHA-256: ad657b4177ca3ad882e7427677bce915d8a26642f1086023c7fa16dfaabddb35
-```
-
-ARM checks cover ELF32 little-endian ARM EABI5 hard-float/VFP calling convention,
-interpreter `/lib/ld-linux-armhf.so.3`, expected dynamic dependencies and symbol
-requirements against the specified SDK, with GLIBC requirements <=2.23.
-The exact hash match is a recorded build result, not a guarantee of reproducible
-bytes with every compiler, directory or future build. Static ABI checks alone
-do not establish every installed board library version.
-
-## Historical hardware evidence
-
-| Case | Observation | Boundary |
-| --- | --- | --- |
-| Normal camera mode | 1280x720 MJPEG, requested30fps, observed about29fps | UVC cadence gaps remain |
-| Slow-client isolation | Normal sender drop0; slow sender drop1116; capture drop0, pool exhaustion0, ownership errors0; refs balanced, pool6/6 | Specific two-client run |
-| M9.3 headless media | Concurrent decoding5.002s; after A exit B continued30.002s, frames146->1001 (+855) | Media independence PASS |
-| M9.3 full automatic Gate | Paired final service/Watchdog evidence and numeric client exit evidence incomplete | INCONCLUSIVE |
-| M9.1/M9.2 | Version check and30-minute playback passed | Full raw bundles not included |
-| Earlier resource runs | 1800.010s/180 samples; separate reconnect run FD5/5/8, threads4/4/6 | Earlier temporary-path binaries |
-| M7.4 operations | Reboot/autostart, diagnostic unlock, SIGKILL recovery, stop/start, three recoveries then lock, reset and playback | Hardware acceptance recorded; raw transcripts not distributed |
-
-ffplay window-close coupling remains **OPEN**. A stable server identity and
-headless media PASS do not prove the GUI symptom fixed. Missing paired identity
-or client exit data are not reconstructed. No personal logs, machine Boot IDs,
-deployment receipts or private images are included.
-
-The frozen service references are:
+## 版本标识
 
 ```text
-M7.4 init:
+正式 M7.2 Release：m7.2-20261013-r1
+ad657b4177ca3ad882e7427677bce915d8a26642f1086023c7fa16dfaabddb35
+
+公开适配版本（Huffman 替换后，维护者提供的 ARM SHA-256）
+8b631abafc478e21e23e755d2676f5061bde8292df16c5bc552c4e27e3e84f46
+
+冻结的 M7.4 init
 46ee08dee67e59ab3bbfbe6b8b83ef42bd7305ce7efc21e2d7d6d576f75116f2
-M7.4 watchdog:
+
+冻结的 M7.4 Watchdog
 ff8092eda6865a2ba675c0bca48af600f1d8fd6a5b17dc4b67097e53b2c8e84d
 ```
 
-## Final review checks and limits
+公开版本曾在替换前与正式二进制哈希一致，不能将该结论用于替换后的程序。
+上述新 ARM 哈希本次未独立重算；没有新增公开适配版本的完整板端验收。
 
-The source allowlist, source mappings, relative links and syntax are checked
-without board access. Nine ABI-checker offline regressions passed separately;
-they are not included in the 162-test native count. Earlier Windows portable
-checks are supplemental, not substitutes for Ubuntu/Poky evidence.
+## 历史实机结果与证据范围
 
-No new board test, deployment or full hardware Gate was performed for this
-review. M8 did not demonstrate a significant end-to-end latency reduction.
-See [limitations](limitations.md), [build](build.md) and
-[publication checklist](publication-checklist.md). Licensing remains separate
-from build and hardware validation.
+| 项目 | 已记录结果与边界 |
+| --- | --- |
+| 正常模式 | 1280×720 MJPEG，约 29 fps；并非恒定 30 fps |
+| 慢客户端隔离 | 正常 sender drop=0，慢 sender drop=1116；capture drop=0、pool exhaustion=0、ownership errors=0，引用平衡，池 6/6 |
+| 双客户端媒体 | 同时解码 5.002 秒；A 退出后 B 继续 30.002 秒，帧数 146→1001，新增 855 帧 |
+| 长时间运行 | 已确认版本检查和 30 分钟播放通过；完整原始证据未公开 |
+| 更早资源记录 | 1800.010 秒/180 样本；另一重连实验 FD 初/终/峰=5/5/8、线程=4/4/6，来自更早临时路径程序 |
+| 服务管理 | 已确认真实 reboot、自启动、诊断锁释放、SIGKILL 恢复、stop/start、前三次恢复后锁定、reset 和播放；原始完整终端记录未分发 |
+
+保留原验收结论：M9 为 CONDITIONAL PASS；M9.3 媒体独立性 PASS，
+完整自动验收为 INCONCLUSIVE，原因是缺少完整成对的后置身份检查和客户端数字退出码证据。
+未推断缺失的退出码或会话身份。两个 ffplay 窗口关闭联动仍为 OPEN；
+无图形 FFmpeg 的结果不能证明这个问题已修复或定位到客户端。
+
+M8 未证明显著端到端延迟改善。上述结论不因文档压缩而改变。
+更多技术范围见[技术边界](limitations.md)，测试方法见[测试说明](testing.md)。

@@ -1,15 +1,10 @@
-# Build
+# 编译说明
 
-No dependency on a private parent directory, prebuilt ARM binary, private photo,
-SDK archive or generated CMake cache is allowed. The selected module layout is
-deliberate; there was no original top-level CMake, so this candidate supplies one.
+## Ubuntu 原生构建
 
-## Ubuntu native
-
-Use a shell **without** an active Poky SDK. Prerequisites: g++, CMake >=3.13,
-Linux userspace/V4L2 headers, POSIX threads, Python >=3.8, a POSIX shell and GNU
-tools. FFmpeg is required only for the independent JPEG decode gate, not the
-board pipeline. GNU mv with -T is required by service/release tests.
+依赖 g++、CMake>=3.13、Python>=3.8、Linux V4L2 头文件、POSIX threads 和 GNU 工具。
+完整离线入口还需要 FFmpeg 实际解码合成 JPEG；服务/发布测试使用支持 -T 的 GNU mv。
+在未激活 Poky SDK 的终端中执行：
 
 ```bash
 cmake -S . -B build/native -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
@@ -18,40 +13,13 @@ cmake --build build/native -- -j2
 ctest --test-dir build/native --output-on-failure
 ```
 
-Targets: `lp2_m5_rtsp_server`, optional `lp2_m4_rtp_receiver`, `lp2_jpeg_rtp_check`
-and six offline test executables. `LP2_BUILD_TOOLS=OFF` omits checker/receiver and
-their two tests; it is not the full six-test gate. Do not run the board server on
-a normal Ubuntu machine merely to validate a build: it needs a real camera and
-conflict-free hardware/ports. Native CTests do not open a camera or board socket.
+主目标为 `lp2_m5_rtsp_server`。可选目标为 `lp2_m4_rtp_receiver`、
+`lp2_jpeg_rtp_check` 及对应测试。LP2_BUILD_TOOLS=OFF 会移除可选工具及两项测试，
+不能用于声称全部 6 项 CTest 通过。原生测试不打开摄像头，无需在 Ubuntu 启动板端服务。
 
-The fixture is already included. No generation step or Windows component is
-needed on Ubuntu; see [fixture provenance](../tests/fixtures/README.md).
+## Poky ARM 构建
 
-## Poky cross-compilation
-
-The maintainer reports PASS for the new Huffman revision's native162 tests,
-ABI checker9 tests and specified SDK build/static ABI. The supplied ARM SHA-256 is
-`8b631abafc478e21e23e755d2676f5061bde8292df16c5bc552c4e27e3e84f46`.
-This is not the pre-replacement M7.2 hash.
-Use `bash tools/validate_huffman_revision.sh` to reproduce native and ARM checks;
-no rebuild is required as part of the notice review.
-See [validation](validation.md).
-
-G3.2 provides a single non-deploying verification entry point. Run on Ubuntu
-from this repository (no private parent required):
-
-```bash
-bash tools/validate_poky.sh
-```
-
-It sources the exact SDK below, rejects compilers/sysroots outside it, records
-the compiler version/triple, exports a new allowlisted copy under
-`/tmp/lp2-public-poky.XXXXXX`, and builds only the server in a fresh CMake cache.
-The directory and logs are retained, not automatically deleted or uploaded.
-No ARM executable is run. Neither SSH nor service installation is performed.
-It does not repeat G3.1 native tests. See [G3.2 review](g3-2-review.md).
-
-The SDK must be separately available under its documented target-compatible path:
+指定 SDK 不包含在仓库中。禁止替换为 Ubuntu 通用 ARM 编译器。
 
 ```bash
 source /opt/fsl-imx-x11/4.1.15-2.1.0/environment-setup-cortexa7hf-neon-poky-linux-gnueabi
@@ -62,35 +30,37 @@ cmake --build build/poky-review --target lp2_m5_rtsp_server -- -j2
 file build/poky-review/m5_rtsp_server/lp2_m5_rtsp_server
 ```
 
-Expected ABI: ARM ELF32 EABI5 hard-float, target glibc 2.23, interpreter
-`/lib/ld-linux-armhf.so.3`. Use SDK readelf to inspect interpreter, NEEDED and
-symbol versions; an ARM architecture label alone does not prove compatibility.
-Do not execute ARM CTests on the host. No generic Ubuntu ARM compiler substitution.
+目标 ABI：ARM ELF32 little-endian、EABI5 hard-float、glibc 2.23，
+解释器为 /lib/ld-linux-armhf.so.3。不能仅凭 file 输出 ARM 就认定兼容。
+不要在主机上执行 ARM 测试。
 
-The automated checker reuses the public release ELF parser. It verifies ARM32
-little-endian EABI5 hard-float, VFP register calling convention, interpreter,
-allowed DT_NEEDED entries, absence of RPATH/RUNPATH and each requested symbol
-version against its corresponding SDK library, not a pooled namespace. Numeric
-GLIBC requirements above 2.23 and unrecognized GLIBC namespaces are rejected.
-SDK interpreter/dependency ELF architecture is checked. Target-absolute SDK
-symlinks are interpreted inside the target sysroot, not Ubuntu's `/lib`.
+自动交叉编译入口：
 
-Evidence: `gate.log`, `sdk.json`, `file.txt`, `SHA256SUMS`, `abi.json`, five
-`readelf-*.txt` files, CMake cache and the new binary. A failed step stops the gate.
-The report is **STATIC_SDK_ABI_ONLY**: matching SDK symbols is not proof that
-installed board libraries match the SDK or that a new binary passed runtime
-validation. Do not expect its SHA to equal frozen M7.2; never replace the frozen
-Release as part of this check.
+```bash
+bash tools/validate_poky.sh
+```
 
-The guarded package builder is a separate entry point:
+脚本按白名单生成独立临时副本，在全新目录构建，检查编译器来源、ELF、VFP 调用约定、
+动态依赖、RPATH/RUNPATH 和逐库符号版本，拒绝高于 glibc 2.23 的要求。
+临时目录保留 gate.log、sdk.json、SHA256SUMS、abi.json 和 readelf 输出，不自动部署。
+静态 SDK 兼容检查不能替代板端运行验收。
+
+## 测试和发布包入口
+
+```bash
+bash tools/validate_ubuntu.sh
+bash tools/validate_huffman_revision.sh
+```
+
+前者执行原生完整离线验证；后者依次执行原生验证、ABI 检查器测试及独立 Poky 构建。
+原生阶段要求未激活 SDK 的终端。合成样本已提供，无需 Windows 生成步骤。
+详见[测试说明](testing.md)和[样本来源](../tests/fixtures/README.md)。
+
+需要构建发布包时，另行执行：
 
 ```bash
 bash scripts/release/build_release.sh public-review-r1
 ```
 
-It sources the SDK itself, builds the module target in a fresh version directory,
-audits metadata and creates a new package. Existing versions are refused. A fresh
-package is NOT automatically activated and starts with hardware_gate=PENDING.
-The old baseline hash is retained as historical comparison, not as an expected
-hash for new public builds. This source export is not claimed bit-identical to
-the frozen hardware-tested binary. All commands here are documentation, not G2 deployment.
+该工具自行加载 SDK，拒绝覆盖同名版本，生成的新包不自动激活。
+正式版本、公开版本的结果及哈希见[验证记录](validation.md)，安装流程见[部署说明](deployment.md)。
